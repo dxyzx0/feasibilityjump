@@ -32,7 +32,7 @@ std::chrono::steady_clock::time_point startTime;
 
 struct Solution
 {
-    std::vector<double> assignment;
+    std::vector<IntegerType> assignment;
     bool includesContinuous;
 };
 
@@ -46,18 +46,18 @@ struct ProblemInstance
 {
     int numCols;
     std::vector<char> varTypes;
-    std::vector<double> lb;
-    std::vector<double> ub;
-    std::vector<double> objCoeffs;
+    std::vector<IntegerType> lb;
+    std::vector<IntegerType> ub;
+    std::vector<IntegerType> objCoeffs;
 
     int numRows;
     int numNonZeros;
     std::vector<char> rowtypes;
-    std::vector<double> rhs;
-    std::vector<double> rhsrange;
+    std::vector<IntegerType> rhs;
+    std::vector<IntegerType> rhsrange;
     std::vector<int> rowStart;
     std::vector<int> colIdxs;
-    std::vector<double> colCoeffs;
+    std::vector<IntegerType> colCoeffs;
 };
 
 struct FJData
@@ -161,6 +161,7 @@ void XPRS_CC presolve_callback(XPRSprob problem, void *_data)
 
 ProblemInstance getXPRSProblemData(XPRSprob problem)
 {
+	// TODO: CHANGE IT
     ProblemInstance data;
 
     XPRSgetintattrib(problem, XPRS_COLS, &data.numCols);
@@ -545,25 +546,8 @@ int main(int argc, char *argv[])
     inputFilename = inputPath.substr(inputPath.find_last_of("/\\") + 1);
 
     int returnCode = 0;
-    XPRSprob problem = nullptr;
-    if (XPRSinit("") != 0)
-    {
-        char message[512];
-        XPRSgetlicerrmsg(message, sizeof(message));
-        fprintf(stderr, "Licensing error: %s\n", message);
-        return 1;
-    }
 
     startTime = std::chrono::steady_clock::now();
-
-    CHECK_RETURN(XPRScreateprob(&problem));
-    CHECK_RETURN(XPRSsetlogfile(problem, "xpress.log"));
-    CHECK_RETURN(XPRSreadprob(problem, inputPath.c_str(), ""));
-
-    // Install the solution callback to report when
-    // a solution was found by the solver.
-    CHECK_RETURN(XPRSaddcbintsol(problem, intsol, nullptr, 0));
-    CHECK_RETURN(XPRSaddcbusersolnotify(problem, userSolNotify, nullptr, 0));
 
     start_feasibility_jump_heuristic(problem, 1, heuristicOnly, relaxContinuous, exponentialDecay, verbose);
 

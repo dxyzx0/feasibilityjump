@@ -9,6 +9,8 @@
 
 #define FJ_LOG_PREFIX "Feasibility Jump: "
 
+typedef long int IntegerType;
+
 enum RowType
 {
     Equal,
@@ -33,70 +35,72 @@ struct FJStatus
     int totalEffort;
     int effortSinceLastImprovement;
     int numVars;
-    double solutionObjectiveValue;
-    double *solution;
+	IntegerType solutionObjectiveValue;
+    int *solution;
 };
 
-const double violationTolerance = 1.0e-5;
-const double equalityTolerance = 1.0e-5;
+const IntegerType violationTolerance = 0;
+const IntegerType equalityTolerance = 0;
 
 // Measures if two doubles are equal within a tolerance of 1.0e-5.
-bool eq(double a, double b)
+bool eq(IntegerType a, IntegerType b)
 {
-    return fabs(a - b) < equalityTolerance;
+    return a == b;
 }
 
 struct IdxCoeff
 {
     uint32_t idx;
-    double coeff;
+    IntegerType coeff;
 
-    IdxCoeff(uint32_t idx, double coeff) : idx(idx), coeff(coeff) {}
+    IdxCoeff(uint32_t idx, IntegerType coeff) : idx(idx), coeff(coeff) {}
 };
 
 struct Var
 {
     VarType vartype;
-    double lb;
-    double ub;
-    double objectiveCoeff;
+	IntegerType lb;
+	IntegerType ub;
+	IntegerType objectiveCoeff;
     std::vector<IdxCoeff> coeffs;
 };
 
 struct Constraint
 {
     RowType sense;
-    double rhs;
+	IntegerType rhs;
     std::vector<IdxCoeff> coeffs;
-    double weight;
-    double incumbentLhs;
+    IntegerType weight;
+	IntegerType incumbentLhs;
     int32_t violatedIdx;
 
     // Computes the constraint's contribution to the feasibility score:
     // If the constraint is satisfied by the given LHS value, returns 0.
     // If the constraint is violated by the given LHS value, returns -|lhs-rhs|.
-    double score(double lhs)
+	IntegerType score(IntegerType lhs)
     {
         if (sense == RowType::Equal)
-            return -fabs(lhs - rhs);
+            return lhs > rhs ? rhs - lhs : lhs - rhs;
         else if (sense == RowType::Lte)
-            return -(std::max(0., lhs - rhs));
+//            return -(std::max(0, lhs - rhs));
+			return -(lhs > rhs ? lhs - rhs : 0);
         else
-            return -(std::max(0., rhs - lhs));
+//            return -(std::max(0., rhs - lhs));
+			return -(rhs > lhs ? rhs - lhs : 0);
     }
 };
 
-// A potential new value for a varaiable, including its score.
+// A potential new value for a variable, including its score.
 struct Move
 {
-    double value;
-    double score;
+	IntegerType value;  // FIXME: potential bug?
+	IntegerType score;
 
     static Move undef()
     {
         Move move;
         move.value = NAN;
-        move.score = -std::numeric_limits<double>::infinity();
+        move.score = std::numeric_limits<IntegerType>::min();
         return move;
     }
 };
@@ -207,7 +211,7 @@ struct Problem
         newConstraint.violatedIdx = -1;
         newConstraint.rhs = rhs;
         newConstraint.sense = sense;
-        newConstraint.weight = 1.0;
+        newConstraint.weight = 1;
 
         constraints.push_back(newConstraint);
         return newConstraintIdx;
@@ -314,7 +318,7 @@ void modifyMove(LhsModification mod, Problem &problem, Move &move)
     Constraint &c = problem.constraints[mod.constraintIdx];
     auto incumbent = problem.incumbentAssignment[mod.varIdx];
     double oldModifiedLhs = mod.oldLhs + mod.coeff * (move.value - incumbent);
-    double oldScoreTerm = c.weight * (c.score(oldModifiedLhs) - c.score(mod.oldLhs));
+    IntegerType oldScoreTerm = c.weight * (c.score(oldModifiedLhs) - c.score(mod.oldLhs));
     double newModifiedLhs = mod.newLhs + mod.coeff * (move.value - incumbent);
     double newScoreTerm = c.weight * (c.score(newModifiedLhs) - c.score(mod.newLhs));
     move.score += newScoreTerm - oldScoreTerm;
@@ -357,14 +361,14 @@ public:
 
             std::vector<std::pair<double, double>> constraintBounds;
             if (constraint.sense == RowType::Lte)
-                constraintBounds.emplace_back(-std::numeric_limits<double>::infinity(), constraint.rhs);
+                constraintBounds.emplace_back(std::numeric_limits<IntegerType>::min(), constraint.rhs);
             else if (constraint.sense == RowType::Gte)
-                constraintBounds.emplace_back(constraint.rhs, std::numeric_limits<double>::infinity());
+                constraintBounds.emplace_back(constraint.rhs, std::numeric_limits<IntegerType>::max());
             else
             {
-                constraintBounds.emplace_back(-std::numeric_limits<double>::infinity(), constraint.rhs);
-                constraintBounds.emplace_back(constraint.rhs, constraint.rhs);
-                constraintBounds.emplace_back(constraint.rhs, std::numeric_limits<double>::infinity());
+                constraintBounds.emplace_back(std::numeric_limits<IntegerType>::min(), constraint.rhs);
+                constraintBounds.emplace_back(constraint.rhs, constraint.rhs);  // FIXME: ???
+                constraintBounds.emplace_back(constraint.rhs, std::numeric_limits<IntegerType>::max());
             }
 
             for (auto &bound : constraintBounds)
@@ -450,8 +454,8 @@ class FeasibilityJumpSolver
 
     std::mt19937 rng;
 
-    double bestObjective = std::numeric_limits<double>::infinity();
-    double objectiveWeight = 0.0;
+	IntegerType bestObjective = std::numeric_limits<IntegerType>::infinity();
+    IntegerType objectiveWeight = 0;
     size_t bestViolationScore = SIZE_MAX;
     size_t effortAtLastCallback = 0;
     size_t effortAtLastImprovement = 0;
@@ -659,10 +663,10 @@ private:
         if (rescaleAllWeights)
         {
             weightUpdateIncrement *= 1.0e-20;
-            objectiveWeight *= 1.0e-20;
+            objectiveWeight = 0;
 
             for (auto &c : problem.constraints)
-                c.weight *= 1.0e-20;
+                c.weight = 1;
             dt += problem.constraints.size();
 
             for (size_t i = 0; i < problem.vars.size(); i += 1)
