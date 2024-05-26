@@ -6,10 +6,11 @@
 #include <cmath>
 #include <cassert>
 #include <algorithm>
+#include "type.h"
 
 #define FJ_LOG_PREFIX "Feasibility Jump: "
 
-typedef long int IntegerType;
+
 
 enum RowType
 {
@@ -36,7 +37,7 @@ struct FJStatus
     int effortSinceLastImprovement;
     int numVars;
 	IntegerType solutionObjectiveValue;
-    int *solution;
+    IntegerType *solution;
 };
 
 const IntegerType violationTolerance = 0;
@@ -73,7 +74,7 @@ struct Constraint
     IntegerType weight;
 	IntegerType incumbentLhs;
     int32_t violatedIdx;
-
+    mpz_class zero = 0;
     // Computes the constraint's contribution to the feasibility score:
     // If the constraint is satisfied by the given LHS value, returns 0.
     // If the constraint is violated by the given LHS value, returns -|lhs-rhs|.
@@ -83,10 +84,10 @@ struct Constraint
             return lhs > rhs ? rhs - lhs : lhs - rhs;
         else if (sense == RowType::Lte)
 //            return -(std::max(0, lhs - rhs));
-			return -(lhs > rhs ? lhs - rhs : 0);
+			return -(lhs > rhs ? lhs - rhs : zero);
         else
 //            return -(std::max(0., rhs - lhs));
-			return -(rhs > lhs ? rhs - lhs : 0);
+			return -(rhs > lhs ? rhs - lhs : zero);
     }
 };
 
@@ -112,9 +113,9 @@ struct LhsModification
 {
     uint32_t varIdx;
     uint32_t constraintIdx;
-    double coeff;
-    double oldLhs;
-    double newLhs;
+    IntegerType coeff;
+    IntegerType oldLhs;
+    IntegerType newLhs;
 };
 
 // Stores the MIP problem, an incumbent assignment, and the set of constraints
@@ -124,14 +125,14 @@ struct Problem
 {
     std::vector<Var> vars;
     std::vector<Constraint> constraints;
-    std::vector<double> incumbentAssignment;
+    std::vector<IntegerType> incumbentAssignment;
     std::vector<uint32_t> violatedConstraints;
     bool usedRelaxContinuous = false;
 
     size_t nNonzeros;
-    double incumbentObjective = NAN;
+    IntegerType incumbentObjective = NAN;
 
-    int addVar(VarType vartype, double lb, double ub, double objCoeff)
+    int addVar(VarType vartype, IntegerType lb, IntegerType ub, IntegerType objCoeff)
     {
         auto idx = vars.size();
         Var var;
@@ -144,7 +145,7 @@ struct Problem
         return idx;
     }
 
-    int addConstraint(RowType sense, double rhs, int numCoeffs, int *rowVarIdxs, double *rowCoeffs, int relax_continuous)
+    int addConstraint(RowType sense, IntegerType rhs, int numCoeffs, int *rowVarIdxs, IntegerType *rowCoeffs, int relax_continuous)
     {
         if (relax_continuous)
             usedRelaxContinuous = true;
@@ -256,11 +257,11 @@ struct Problem
     // for every variable/constraint combination (except for `varIdx` itself)
     // where the LHS of the constraint has changed.
     template <typename F>
-    size_t setValue(uint32_t varIdx, double newValue, F f)
+    size_t setValue(int varIdx, IntegerType newValue, F f)
     {
         size_t dt = 0;
-        double oldValue = incumbentAssignment[varIdx];
-        double delta = (newValue - oldValue);
+        IntegerType oldValue = incumbentAssignment[varIdx];
+        IntegerType delta = (newValue - oldValue);
         incumbentAssignment[varIdx] = newValue;
         incumbentObjective += vars[varIdx].objectiveCoeff * delta;
         // printf("Setting v%d to from %g to value %g\n", varIdx, oldValue, newValue);
@@ -268,10 +269,10 @@ struct Problem
         // Update the LHSs of all involved constraints.
         for (auto &cstrCoeff : vars[varIdx].coeffs)
         {
-            double oldLhs = constraints[cstrCoeff.idx].incumbentLhs;
-            double newLhs = oldLhs + cstrCoeff.coeff * delta;
+            IntegerType oldLhs = constraints[cstrCoeff.idx].incumbentLhs;
+            IntegerType newLhs = oldLhs + cstrCoeff.coeff * delta;
             constraints[cstrCoeff.idx].incumbentLhs = newLhs;
-            double newCost = constraints[cstrCoeff.idx].score(newLhs);
+            IntegerType newCost = constraints[cstrCoeff.idx].score(newLhs);
 
             // Add/remove from the violatedConstraints list.
             if (newCost < -violationTolerance && constraints[cstrCoeff.idx].violatedIdx == -1)
@@ -317,10 +318,10 @@ void modifyMove(LhsModification mod, Problem &problem, Move &move)
 {
     Constraint &c = problem.constraints[mod.constraintIdx];
     auto incumbent = problem.incumbentAssignment[mod.varIdx];
-    double oldModifiedLhs = mod.oldLhs + mod.coeff * (move.value - incumbent);
+    IntegerType oldModifiedLhs = mod.oldLhs + mod.coeff * (move.value - incumbent);
     IntegerType oldScoreTerm = c.weight * (c.score(oldModifiedLhs) - c.score(mod.oldLhs));
-    double newModifiedLhs = mod.newLhs + mod.coeff * (move.value - incumbent);
-    double newScoreTerm = c.weight * (c.score(newModifiedLhs) - c.score(mod.newLhs));
+    IntegerType newModifiedLhs = mod.newLhs + mod.coeff * (move.value - incumbent);
+    IntegerType newScoreTerm = c.weight * (c.score(newModifiedLhs) - c.score(mod.newLhs));
     move.score += newScoreTerm - oldScoreTerm;
 }
 
@@ -329,7 +330,7 @@ void modifyMove(LhsModification mod, Problem &problem, Move &move)
 class JumpMove
 {
     std::vector<Move> moves;
-    std::vector<std::pair<double, double>> bestShiftBuffer;
+    std::vector<std::pair<IntegerType, IntegerType>> bestShiftBuffer;
 
 public:
     void init(Problem &problem)
@@ -347,9 +348,9 @@ public:
     {
         bestShiftBuffer.clear();
         auto varIncumbentValue = problem.incumbentAssignment[varIdx];
-        double currentValue = problem.vars[varIdx].lb;
-        double currentScore = 0.0;
-        double currentSlope = 0.0;
+        IntegerType currentValue = problem.vars[varIdx].lb;
+        IntegerType currentScore = 0.0;
+        IntegerType currentSlope = 0.0;
 
         // printf(" updatevalue lb %g ub %g numcells %d\n",
         //        problem.vars[varIdx].lb,
@@ -359,7 +360,7 @@ public:
         {
             auto &constraint = problem.constraints[cell.idx];
 
-            std::vector<std::pair<double, double>> constraintBounds;
+            std::vector<std::pair<IntegerType , IntegerType>> constraintBounds;
             if (constraint.sense == RowType::Lte)
                 constraintBounds.emplace_back(std::numeric_limits<IntegerType>::min(), constraint.rhs);
             else if (constraint.sense == RowType::Gte)
@@ -373,17 +374,17 @@ public:
 
             for (auto &bound : constraintBounds)
             {
-                double residualIncumbent = constraint.incumbentLhs - cell.coeff * varIncumbentValue;
+                IntegerType residualIncumbent = constraint.incumbentLhs - cell.coeff * varIncumbentValue;
 
-                std::pair<double, double> validRange = {
+                std::pair<IntegerType , IntegerType > validRange = {
                     ((1.0 / cell.coeff) * (bound.first - residualIncumbent)),
                     ((1.0 / cell.coeff) * (bound.second - residualIncumbent)),
                 };
 
                 if (problem.vars[varIdx].vartype == VarType::Integer)
                     validRange = {
-                        std::ceil(validRange.first - equalityTolerance),
-                        std::floor(validRange.second + equalityTolerance),
+                        validRange.first - equalityTolerance,
+                        validRange.second + equalityTolerance,
                     };
 
                 if (validRange.first > validRange.second)
@@ -411,8 +412,8 @@ public:
         bestShiftBuffer.emplace_back(problem.vars[varIdx].ub, 0);
         std::sort(bestShiftBuffer.begin(), bestShiftBuffer.end());
 
-        double bestScore = currentScore;
-        double bestValue = currentValue;
+        IntegerType bestScore = currentScore;
+        IntegerType bestValue = currentValue;
         // printf("evaluating best shift buffer size %d \n", bestShiftBuffer.size());
         for (auto &item : bestShiftBuffer)
         {
@@ -486,13 +487,13 @@ public:
         rng = std::mt19937(seed);
     }
 
-    int addVar(VarType vartype, double lb, double ub, double objCoeff)
+    int addVar(VarType vartype, IntegerType lb, IntegerType ub, IntegerType objCoeff)
     {
         goodVarsSetIdx.push_back(-1);
         return problem.addVar(vartype, lb, ub, objCoeff);
     }
 
-    int addConstraint(RowType sense, double rhs, int numCoeffs, int *rowVarIdxs, double *rowCoeffs, int relax_continuous)
+    int addConstraint(RowType sense, IntegerType rhs, int numCoeffs, int *rowVarIdxs, IntegerType *rowCoeffs, int relax_continuous)
     {
         return problem.addConstraint(sense, rhs, numCoeffs, rowVarIdxs, rowCoeffs, relax_continuous);
     }
@@ -563,7 +564,7 @@ private:
             auto sampleSize = std::min(maxMovesToEvaluate, goodVarsSet.size());
             totalEffort += sampleSize;
 
-            double bestScore = -std::numeric_limits<double>::infinity();
+            IntegerType bestScore = -std::numeric_limits<double>::infinity();
             uint32_t bestVar = UINT_MAX;
             for (size_t i = 0; i < sampleSize; i++)
             {
@@ -593,7 +594,7 @@ private:
             if (std::uniform_real_distribution<double>(0., 1.)(rng) < randomCellProbability)
                 return constraint.coeffs[rng() % constraint.coeffs.size()].idx;
 
-            double bestScore = -std::numeric_limits<double>::infinity();
+            IntegerType bestScore = -std::numeric_limits<double>::infinity();
             uint32_t bestVarIdx = UINT_MAX;
 
             for (auto &cell : constraint.coeffs)
@@ -649,8 +650,8 @@ private:
                     forEachMove(
                         cell.idx, [&](Move &move)
                         {
-                            double candidateLhs = constraint.incumbentLhs + cell.coeff * (move.value - problem.incumbentAssignment[cell.idx]);
-                            double diff = weightUpdateIncrement * (constraint.score(candidateLhs) -
+                            IntegerType candidateLhs = constraint.incumbentLhs + cell.coeff * (move.value - problem.incumbentAssignment[cell.idx]);
+                            IntegerType diff = weightUpdateIncrement * (constraint.score(candidateLhs) -
                                                                    constraint.score(constraint.incumbentLhs));
                             move.score += diff; });
 
@@ -686,11 +687,11 @@ private:
         return best;
     }
 
-    void doVariableMove(uint32_t varIdx)
+    void doVariableMove(int varIdx)
     {
         // First, we get the best move for the variable;
         auto m = bestMove(varIdx);
-        auto newValue = m.value;
+        IntegerType newValue = m.value;
         // assert(!isnan(newValue));
 
         // Update the incumbent solution.
@@ -763,7 +764,7 @@ private:
         updateGoodMoves(varIdx);
     }
 
-    bool user_terminate(std::function<CallbackControlFlow(FJStatus)> callback, double *solution)
+    bool user_terminate(std::function<CallbackControlFlow(FJStatus)> callback, IntegerType *solution)
     {
         const int CALLBACK_EFFORT = 500000;
         if (solution != nullptr || totalEffort - effortAtLastCallback > CALLBACK_EFFORT)
