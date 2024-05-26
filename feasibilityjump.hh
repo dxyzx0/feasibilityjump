@@ -145,7 +145,7 @@ struct Problem
         return idx;
     }
 
-    int addConstraint(RowType sense, IntegerType rhs, int numCoeffs, int *rowVarIdxs, IntegerType *rowCoeffs, int relax_continuous)
+    int addConstraint(RowType sense, IntegerType rhs, long numCoeffs, long *rowVarIdxs, IntegerType *rowCoeffs, int relax_continuous)
     {
         if (relax_continuous)
             usedRelaxContinuous = true;
@@ -493,7 +493,7 @@ public:
         return problem.addVar(vartype, lb, ub, objCoeff);
     }
 
-    int addConstraint(RowType sense, IntegerType rhs, int numCoeffs, int *rowVarIdxs, IntegerType *rowCoeffs, int relax_continuous)
+    int addConstraint(RowType sense, IntegerType rhs, long numCoeffs, long *rowVarIdxs, IntegerType *rowCoeffs, int relax_continuous)
     {
         return problem.addConstraint(sense, rhs, numCoeffs, rowVarIdxs, rowCoeffs, relax_continuous);
     }

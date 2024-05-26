@@ -59,9 +59,9 @@ struct ProblemInstance
     int numNonZeros;
     std::vector<char> rowtypes;
     std::vector<IntegerType> rhs;
-    std::vector<IntegerType> rhsrange;
-    std::vector<int> rowStart;
-    std::vector<int> colIdxs;
+    //std::vector<IntegerType> rhsrange;
+    std::vector<long> rowStart;
+    std::vector<long> colIdxs;
     std::vector<IntegerType> colCoeffs;
     std::vector< tuple< long, string>> rowRelOp;
 };
@@ -173,7 +173,7 @@ ProblemInstance getXPRSProblemData(AbcCallback& abcCallback)//XPRSprob problem,
     ProblemInstance data;
     //XPRSgetintattrib(problem, XPRS_COLS, &data.numCols);
     data.numCols = abcCallback.getNVar();
-    cout << "numCols: " << data.numCols << endl;
+
     //data.varTypes = std::vector<char>(data.numCols);
     //XPRSgetcoltype(problem, data.varTypes.data(), 0, data.numCols - 1);
     data.varTypes = std::vector<char>(data.numCols);
@@ -191,7 +191,11 @@ ProblemInstance getXPRSProblemData(AbcCallback& abcCallback)//XPRSprob problem,
     //XPRSgetobj(problem, data.objCoeffs.data(), 0, data.numCols - 1);
     data.objCoeffs = std::vector<IntegerType>(data.numCols);
 
-    //XPRSgetintattrib(problem, XPRS_ROWS, &data.numRows);
+   for(int i = 0; i < data.numCols; i++)
+    {
+        data.objCoeffs[i] = std::get<1>(abcCallback.getC()[i]);
+    }
+   //XPRSgetintattrib(problem, XPRS_ROWS, &data.numRows);
     data.numRows = abcCallback.getNCons();
 
     //data.rowtypes = std::vector<char>(data.numRows);
@@ -203,7 +207,7 @@ ProblemInstance getXPRSProblemData(AbcCallback& abcCallback)//XPRSprob problem,
         std::string relOp = std::get<1>(data.rowRelOp[i]);
         if (relOp == "=") data.rowtypes[i] = 'E';
         else if (relOp == ">=") data.rowtypes[i] = 'G';
-        else data.rowtypes[i] = 'N';
+        else {throw std::runtime_error("Unsupported relation operator");}
     }
 
     //data.rhs = std::vector<double>(data.numRows);
@@ -223,22 +227,84 @@ ProblemInstance getXPRSProblemData(AbcCallback& abcCallback)//XPRSprob problem,
            data.numCols, data.numRows, data.numNonZeros);
 
 
-    data.rowStart = std::vector<int>(data.numRows + 1);
-    data.colIdxs = std::vector<int>(data.numNonZeros);
+    data.rowStart = std::vector<long>(data.numRows + 1);
+    data.colIdxs = std::vector<long>(data.numNonZeros);
     data.colCoeffs = std::vector<IntegerType>(data.numNonZeros);
+    data.rowStart[0] = 0;
+
+    // add assert to make sure abcCallback.getA() is sorted by row
+
 
     int i = 0;
+    long row = 0;
     for (const auto& t : abcCallback.getA())
     {
         data.colIdxs[i] = get<1>(t);
         data.colCoeffs[i] = get<2>(t);
+        auto row_i = get<0>(t);
+        if (row_i != row)
+        {
+            data.rowStart[row + 1] = i;
+            row = row_i;
+        }
         i++;
     }
-    data.rowStart[0] = 0;
-    for(int j = 0; j < data.numRows; j++)
-    {
-        data.rowStart[j + 1] = data.rowStart[j] + std::count_if(data.colIdxs.begin(), data.colIdxs.end(), [j](int x) { return x == j; });
+    data.rowStart[data.numRows] = data.numNonZeros;
+//    for(int j = 0; j < data.numRows; j++)
+//    {
+//        data.rowStart[j + 1] = data.rowStart[j] + std::count_if(data.colIdxs.begin(), data.colIdxs.end(), [j](int x) { return x == j; });
+//    }
+    cout <<"*****************\n" << endl;
+    cout << "numCols= \n" << data.numCols << endl;
+    cout << "numRows= \n" << data.numRows << endl;
+    cout << "numNonZeros= \n" << data.numNonZeros << endl;
+    cout << " varTypes: " << endl;
+    for (const auto& t : data.varTypes) {
+        std::cout << t << " ";
     }
+    std::cout << std::endl;
+    cout << " lb: " << endl;
+    for (const auto& t : lb) {
+        std::cout << t << " ";
+    }
+    std::cout << std::endl;
+    cout << " ub: " << endl;
+    for (const auto& t : ub) {
+        std::cout << t << " ";
+    }
+    std::cout << std::endl;
+    cout << " objCoeffs: " << endl;
+    for (const auto& t : data.objCoeffs) {
+        std::cout << t << " ";
+    }
+    std::cout << std::endl;
+    cout << " rowtypes: " << endl;
+    for (const auto& t : data.rowtypes) {
+        std::cout << t << " ";
+    }
+    std::cout << std::endl;
+    cout << " rhs:" << endl;
+    for (const auto& t : data.rhs) {
+        std::cout << t << " ";
+    }
+    std::cout << std::endl;
+    cout << " rowStart:" << endl;
+    for (const auto& t : data.rowStart) {
+        std::cout << t << " ";
+    }
+    std::cout << std::endl;
+    cout << " colIdxs:" << endl;
+    for (const auto& t : data.colIdxs) {
+        std::cout << t << " ";
+    }
+    std::cout << std::endl;
+    cout << " colCoeffs:" << endl;
+    for (const auto& t : data.colCoeffs) {
+        std::cout << t << " ";
+    }
+    std::cout << std::endl;
+
+    cout <<"*****************\n" << endl;
 
 
     //XPRSgetrows(problem,
@@ -256,7 +322,7 @@ ProblemInstance getXPRSProblemData(AbcCallback& abcCallback)//XPRSprob problem,
 bool copyDataToHeuristicSolver(FeasibilityJumpSolver &solver, ProblemInstance &data, int relaxContinuous)
 {
     printf("initializing FJ with %d vars %d constraints\n", data.numCols, data.numRows);
-    for (int colIdx = 0; colIdx < data.numCols; colIdx += 1)
+    for (long colIdx = 0; colIdx < data.numCols; colIdx += 1)
     {
         VarType vartype = VarType::Continuous;
         if (data.varTypes[colIdx] == 'C')
@@ -281,7 +347,7 @@ bool copyDataToHeuristicSolver(FeasibilityJumpSolver &solver, ProblemInstance &d
         solver.addVar(vartype, data.lb[colIdx], data.ub[colIdx], data.objCoeffs[colIdx]);
     }
 
-    for (int rowIdx = 0; rowIdx < data.numRows; rowIdx += 1)
+    for (long rowIdx = 0; rowIdx < data.numRows; rowIdx += 1)
     {
         assert(data.rowtypes[rowIdx] == 'G' || data.rowtypes[rowIdx] == 'E');
         RowType rowtype;
@@ -450,25 +516,23 @@ void start_feasibility_jump_heuristic(AbcCallback& abcCallback, size_t maxTotalS
         auto allThreadsTerminated = std::make_shared<Defer>([]()
                                                             { heuristicFinished = true; });
 
-        for (int thread_idx = 0; thread_idx < NUM_THREADS; thread_idx += 1)
+        for (int thread_idx = 0; thread_idx < 1; thread_idx += 1)
         {
             auto seed = thread_idx;
             bool usePresolved = thread_idx % 2 == 1;
             double decayFactor = (!exponentialDecay) ? 1.0 : 0.9999;
-
-            std::thread(
-                [verbose, maxTotalSolutions, usePresolved, seed,
-                 relaxContinuous, decayFactor, allThreadsTerminated, &abcCallback]()
+            auto f = [verbose, maxTotalSolutions, usePresolved, seed,
+                    relaxContinuous, decayFactor, allThreadsTerminated, &abcCallback]()
+            {
+                // Prepare data for the non-presolved version.
                 {
-                    // Prepare data for the non-presolved version.
+                    std::lock_guard<std::mutex> guard(nonPresolvedProblem_mutex);
+                    if (gFJData.originalData.numCols == 0)
                     {
-                        std::lock_guard<std::mutex> guard(nonPresolvedProblem_mutex);
-                        if (gFJData.originalData.numCols == 0)
-                        {
-                            gFJData.originalData = getXPRSProblemData(abcCallback);                        }
-                    }
+                        gFJData.originalData = getXPRSProblemData(abcCallback);                        }
+                }
 
-                    // Produce the presolved solution
+                // Produce the presolved solution
 //                    if (usePresolved)
 //                    {
 //                        std::lock_guard<std::mutex> guard(presolvedProblem_mutex);
@@ -484,19 +548,19 @@ void start_feasibility_jump_heuristic(AbcCallback& abcCallback, size_t maxTotalS
 //                        }
 //                    }
 
-                    ProblemInstance &data = usePresolved ? gFJData.presolvedData : gFJData.originalData;
-                    FeasibilityJumpSolver solver(seed, verbose, decayFactor);
-                    bool copyOk = copyDataToHeuristicSolver(solver, data, relaxContinuous);
-                    if (!copyOk)
-                        return;
+                ProblemInstance &data = usePresolved ? gFJData.presolvedData : gFJData.originalData;
+                FeasibilityJumpSolver solver(seed, verbose, decayFactor);
+                bool copyOk = copyDataToHeuristicSolver(solver, data, relaxContinuous);
+                if (!copyOk)
+                    return;
 
-                    solver.solve(
+                solver.solve(
                         nullptr, [maxTotalSolutions, usePresolved](FJStatus status) -> CallbackControlFlow
                         {
-                            
-    
+
+
                             double time = std::chrono::duration_cast<std::chrono::milliseconds>(
-                                std::chrono::steady_clock::now() - startTime).count() /1000.0;
+                                    std::chrono::steady_clock::now() - startTime).count() /1000.0;
 
                             // If we received a solution, put it on the queue.
                             if (status.solution != nullptr)
@@ -506,19 +570,82 @@ void start_feasibility_jump_heuristic(AbcCallback& abcCallback, size_t maxTotalS
                                 free(solutionObjectiveValueStr);
                                 //mapHeuristicSolution(status, usePresolved);
                             }
-    
+
                             // If we have enough solutions or spent enough time, quit.
                             auto quitNumSol = totalNumSolutionsFound >= maxTotalSolutions;
                             if(quitNumSol) printf(FJ_LOG_PREFIX "quitting because number of solutions %zd >= %zd.\n", totalNumSolutionsFound.load(), maxTotalSolutions);
                             auto quitEffort = status.effortSinceLastImprovement > maxEffort;
                             if(quitEffort) printf(FJ_LOG_PREFIX "quitting because effort %d > %d.\n", status.effortSinceLastImprovement , maxEffort);
-                            
+
                             auto quit = quitNumSol || quitEffort || heuristicFinished;
                             if (quit)
                                 printf(FJ_LOG_PREFIX "effort rate: %g Mops/sec\n", status.totalEffort / time / 1.0e6);
                             return quit ? CallbackControlFlow::Terminate : CallbackControlFlow::Continue; });
-                })
-                .detach();
+            };
+            f();
+//            std::thread(
+//                [verbose, maxTotalSolutions, usePresolved, seed,
+//                 relaxContinuous, decayFactor, allThreadsTerminated, &abcCallback]()
+//                {
+//                    // Prepare data for the non-presolved version.
+//                    {
+//                        std::lock_guard<std::mutex> guard(nonPresolvedProblem_mutex);
+//                        if (gFJData.originalData.numCols == 0)
+//                        {
+//                            gFJData.originalData = getXPRSProblemData(abcCallback);                        }
+//                    }
+//
+//                    // Produce the presolved solution
+////                    if (usePresolved)
+////                    {
+////                        std::lock_guard<std::mutex> guard(presolvedProblem_mutex);
+////                        if (gFJData.presolvedProblemCopy == nullptr)
+////                        {
+////                            XPRScreateprob(&gFJData.presolvedProblemCopy);
+////                            XPRSsetlogfile(gFJData.presolvedProblemCopy, "presolve.log");
+////                            XPRScopyprob(gFJData.presolvedProblemCopy, gFJData.originalProblemCopy, "");
+////                            XPRSsetintcontrol(gFJData.presolvedProblemCopy, XPRS_LPITERLIMIT, 0);
+////
+////                            XPRSmipoptimize(gFJData.presolvedProblemCopy, "");
+////                            gFJData.presolvedData = getXPRSProblemData(gFJData.presolvedProblemCopy);
+////                        }
+////                    }
+//
+//                    ProblemInstance &data = usePresolved ? gFJData.presolvedData : gFJData.originalData;
+//                    FeasibilityJumpSolver solver(seed, verbose, decayFactor);
+//                    bool copyOk = copyDataToHeuristicSolver(solver, data, relaxContinuous);
+//                    if (!copyOk)
+//                        return;
+//
+//                    solver.solve(
+//                        nullptr, [maxTotalSolutions, usePresolved](FJStatus status) -> CallbackControlFlow
+//                        {
+//
+//
+//                            double time = std::chrono::duration_cast<std::chrono::milliseconds>(
+//                                std::chrono::steady_clock::now() - startTime).count() /1000.0;
+//
+//                            // If we received a solution, put it on the queue.
+//                            if (status.solution != nullptr)
+//                            {
+//                                char *solutionObjectiveValueStr = mpz_get_str(NULL, 10, status.solutionObjectiveValue.get_mpz_t());
+//                                printf("FJSOL %g %s\n", time, solutionObjectiveValueStr);
+//                                free(solutionObjectiveValueStr);
+//                                //mapHeuristicSolution(status, usePresolved);
+//                            }
+//
+//                            // If we have enough solutions or spent enough time, quit.
+//                            auto quitNumSol = totalNumSolutionsFound >= maxTotalSolutions;
+//                            if(quitNumSol) printf(FJ_LOG_PREFIX "quitting because number of solutions %zd >= %zd.\n", totalNumSolutionsFound.load(), maxTotalSolutions);
+//                            auto quitEffort = status.effortSinceLastImprovement > maxEffort;
+//                            if(quitEffort) printf(FJ_LOG_PREFIX "quitting because effort %d > %d.\n", status.effortSinceLastImprovement , maxEffort);
+//
+//                            auto quit = quitNumSol || quitEffort || heuristicFinished;
+//                            if (quit)
+//                                printf(FJ_LOG_PREFIX "effort rate: %g Mops/sec\n", status.totalEffort / time / 1.0e6);
+//                            return quit ? CallbackControlFlow::Terminate : CallbackControlFlow::Continue; });
+//                })
+//                .detach();
         }
     }
 
