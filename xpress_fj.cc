@@ -34,11 +34,6 @@ std::atomic_bool presolveFinished(false);
 std::atomic_bool heuristicFinished(false);
 std::chrono::steady_clock::time_point startTime;
 
-struct Solution
-{
-	std::vector< IntegerType > assignment;
-	bool includesContinuous;
-};
 
 std::vector< Solution > heuristicSolutions;
 std::mutex heuristicSolutions_mutex;
@@ -399,7 +394,7 @@ void mapHeuristicSolution(FJStatus& status)
 	{
 		printf(FJ_LOG_PREFIX "received a solution from non-presolved instance.\n");
 		s.assignment = std::vector< IntegerType >(status.solution, status.solution + status.numVars);
-		s.includesContinuous = true;
+		s.includesContinuous = false;
 		conversionOk = true;
 	}
 
@@ -502,7 +497,13 @@ void start_feasibility_jump_heuristic(AbcCallback& abcCallback, size_t maxTotalS
 
 					auto quit = quitNumSol || quitEffort || heuristicFinished;
 					if (quit)
+					{
 						printf(FJ_LOG_PREFIX "effort rate: %g Mops/sec\n", status.totalEffort / time / 1.0e6);
+						for (auto& s : heuristicSolutions)
+						{
+							printIdxOfOneInSolution(s);
+						}
+					}
 					return quit ? CallbackControlFlow::Terminate : CallbackControlFlow::Continue;
 				  });
 			};
@@ -610,6 +611,7 @@ int main(int argc, char* argv[])
 	bool relaxContinuous = false;
 	bool exponentialDecay = false;
 	int timeout = INT32_MAX / 2;
+	size_t maxTotalSolutions = 5;
 
 	std::string inputPath;
 	for (int i = 1; i < argc; i += 1)
@@ -680,7 +682,7 @@ int main(int argc, char* argv[])
 
 
 
-	start_feasibility_jump_heuristic(parser->cb, 1, heuristicOnly, relaxContinuous, exponentialDecay, verbose);
+	start_feasibility_jump_heuristic(parser->cb, maxTotalSolutions, heuristicOnly, relaxContinuous, exponentialDecay, verbose);
 
 //    if (!heuristicOnly)
 //    {

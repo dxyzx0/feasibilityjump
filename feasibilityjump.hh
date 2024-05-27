@@ -10,6 +10,74 @@
 
 #define FJ_LOG_PREFIX "Feasibility Jump: "
 
+struct Solution
+{
+	std::vector< IntegerType > assignment;
+	bool includesContinuous;
+};
+
+void printSolution(const Solution& s)
+{
+	cout << "solution: ";
+	for (const IntegerType& v : s.assignment)
+	{
+		cout << v << " ";
+	}
+	cout << endl;
+}
+
+void printIdxOfOneInSolution(const Solution& s)
+{
+	cout << "solution: ";
+	for (size_t i = 0; i < s.assignment.size(); i += 1)
+	{
+		if (s.assignment[i] == 1)
+			cout << i << " ";
+	}
+}
+
+void printSolution(IntegerType* s, size_t n)
+{
+	cout << "solution: ";
+	for (size_t i = 0; i < n; i += 1)
+	{
+		cout << s[i] << " ";
+	}
+	cout << endl;
+}
+
+void printIdxOfOneInSolution(IntegerType* s, size_t n)
+{
+	cout << "solution: ";
+	for (size_t i = 0; i < n; i += 1)
+	{
+		if (s[i] == 1)
+			cout << i << " ";
+	}
+	cout << endl;
+}
+
+void printVector(const std::vector< IntegerType >& v)
+{
+	cout << "vector: ";
+	for (const IntegerType& x : v)
+	{
+		cout << x << " ";
+	}
+	cout << endl;
+}
+
+void printIdxOfOneInVector(const std::vector< IntegerType >& v)
+{
+	cout << "vector: ";
+	for (size_t i = 0; i < v.size(); i += 1)
+	{
+		if (v[i] == 1)
+			cout << i << " ";
+	}
+	cout << endl;
+}
+
 enum RowType
 {
 	Equal,
@@ -73,13 +141,13 @@ struct Constraint
 	std::vector< IdxCoeff > coeffs;
 	IntegerType weight;
 	IntegerType incumbentLhs;
-	int32_t violatedIdx;
+	uint32_t violatedIdx;
 	IntegerType zero = 0;
 
 	// Computes the constraint's contribution to the feasibility score:
 	// If the constraint is satisfied by the given LHS value, returns 0.
 	// If the constraint is violated by the given LHS value, returns -|lhs-rhs|.
-	IntegerType score(IntegerType lhs)
+	IntegerType score(const IntegerType& lhs) const
 	{
 		if (sense == RowType::Equal)
 			return lhs > rhs ? rhs - lhs : lhs - rhs;
@@ -101,7 +169,7 @@ struct Move
 	static Move undef()
 	{
 		Move move;
-		move.value = -1;
+		move.value = -1; // potential value is 0 or 1, so -1 is a good choice
 		move.score = PBOINTMIN;
 		return move;
 	}
@@ -135,7 +203,7 @@ struct Problem
 
 	int addVar(VarType vartype, IntegerType lb, IntegerType ub, IntegerType objCoeff)
 	{
-		auto idx = vars.size();
+		size_t idx = vars.size();
 		Var var;
 		var.vartype = vartype;
 		var.lb = lb;
@@ -202,7 +270,7 @@ struct Problem
 		}
 
 		int newConstraintIdx = constraints.size();
-		for (auto& c : coeffs)
+		for (IdxCoeff& c : coeffs)
 		{
 			vars[c.idx].coeffs.emplace_back(newConstraintIdx, c.coeff);
 		}
@@ -240,9 +308,12 @@ struct Problem
 		{
 			Constraint& cstr = constraints[cIdx];
 
-			cstr.incumbentLhs = 0.0;
-			for (auto& vc : cstr.coeffs)
+			cstr.incumbentLhs = 0;
+			for (IdxCoeff& vc : cstr.coeffs)
 				cstr.incumbentLhs += vc.coeff * incumbentAssignment[vc.idx];
+
+			if (initialValues == nullptr)
+				assert(cstr.incumbentLhs == 0);
 
 			if (cstr.score(cstr.incumbentLhs) < -violationTolerance)
 			{
@@ -269,7 +340,7 @@ struct Problem
 		// printf("Setting v%d to from %g to value %g\n", varIdx, oldValue, newValue);
 
 		// Update the LHSs of all involved constraints.
-		for (auto& cstrCoeff : vars[varIdx].coeffs)
+		for (IdxCoeff& cstrCoeff : vars[varIdx].coeffs)
 		{
 			IntegerType oldLhs = constraints[cstrCoeff.idx].incumbentLhs;
 			IntegerType newLhs = oldLhs + cstrCoeff.coeff * delta;
@@ -286,9 +357,9 @@ struct Problem
 			if (newCost >= -violationTolerance && constraints[cstrCoeff.idx].violatedIdx != -1)
 			{
 				// Became satisfied.
-				auto lastViolatedIdx = violatedConstraints.size() - 1;
-				auto lastConstraintIdx = violatedConstraints[lastViolatedIdx];
-				auto thisViolatedIdx = constraints[cstrCoeff.idx].violatedIdx;
+				size_t lastViolatedIdx = violatedConstraints.size() - 1;
+				uint32_t lastConstraintIdx = violatedConstraints[lastViolatedIdx];
+				uint32_t thisViolatedIdx = constraints[cstrCoeff.idx].violatedIdx;
 				std::swap(violatedConstraints[thisViolatedIdx], violatedConstraints[lastViolatedIdx]);
 				constraints[lastConstraintIdx].violatedIdx = thisViolatedIdx;
 				constraints[cstrCoeff.idx].violatedIdx = -1;
@@ -297,7 +368,7 @@ struct Problem
 
 			// Now, report the changes in LHS for other variables.
 			dt += constraints[cstrCoeff.idx].coeffs.size();
-			for (auto& varCoeff : constraints[cstrCoeff.idx].coeffs)
+			for (IdxCoeff& varCoeff : constraints[cstrCoeff.idx].coeffs)
 			{
 				if (varCoeff.idx != varIdx)
 				{
@@ -318,8 +389,9 @@ struct Problem
 
 void modifyMove(LhsModification mod, Problem& problem, Move& move)
 {
+	assert(move.value != -1);
 	Constraint& c = problem.constraints[mod.constraintIdx];
-	auto incumbent = problem.incumbentAssignment[mod.varIdx];
+	IntegerType incumbent = problem.incumbentAssignment[mod.varIdx];
 	IntegerType oldModifiedLhs = mod.oldLhs + mod.coeff * (move.value - incumbent);
 	IntegerType oldScoreTerm = c.weight * (c.score(oldModifiedLhs) - c.score(mod.oldLhs));
 	IntegerType newModifiedLhs = mod.newLhs + mod.coeff * (move.value - incumbent);
@@ -341,7 +413,7 @@ class JumpMove
 	}
 
 	template< typename F >
-	void forEachVarMove(int32_t varIdx, F f)
+	void forEachVarMove(uint32_t varIdx, F f)
 	{
 		f(moves[varIdx]);
 	}
@@ -349,20 +421,21 @@ class JumpMove
 	void updateValue(Problem& problem, uint32_t varIdx)
 	{
 		bestShiftBuffer.clear();
-		auto varIncumbentValue = problem.incumbentAssignment[varIdx];
+		IntegerType varIncumbentValue = problem.incumbentAssignment[varIdx];
 		IntegerType currentValue = problem.vars[varIdx].lb;
-		IntegerType currentScore = 0.0;
-		IntegerType currentSlope = 0.0;
+		IntegerType currentScore = 0;
+		IntegerType currentSlope = 0;
 
 		// printf(" updatevalue lb %g ub %g numcells %d\n",
 		//        problem.vars[varIdx].lb,
 		//        problem.vars[varIdx].ub, problem.vars[varIdx].coeffs.size());
 
-		for (auto& cell : problem.vars[varIdx].coeffs)
+		for (IdxCoeff& cell : problem.vars[varIdx].coeffs)
 		{
-			auto& constraint = problem.constraints[cell.idx];
+			Constraint& constraint = problem.constraints[cell.idx];
 
-			std::vector< std::pair< IntegerType, IntegerType>> constraintBounds;
+			std::vector< std::pair< IntegerType, IntegerType > > constraintBounds;
+			assert(constraint.sense != RowType::Lte);
 			if (constraint.sense == RowType::Lte)
 				constraintBounds.emplace_back(PBOINTMIN, constraint.rhs);
 			else if (constraint.sense == RowType::Gte)
@@ -374,13 +447,13 @@ class JumpMove
 				constraintBounds.emplace_back(constraint.rhs, PBOINTMAX);
 			}
 
-			for (auto& bound : constraintBounds)
+			for (const std::pair< IntegerType, IntegerType >& bound : constraintBounds)
 			{
 				IntegerType residualIncumbent = constraint.incumbentLhs - cell.coeff * varIncumbentValue;
 
 				std::pair< IntegerType, IntegerType > validRange = {
-					((1.0 / cell.coeff) * (bound.first - residualIncumbent)),
-					((1.0 / cell.coeff) * (bound.second - residualIncumbent)),
+					(bound.first - residualIncumbent + cell.coeff - 1) / cell.coeff,  // Round up  FIXME: correct?
+					(bound.second - residualIncumbent) / cell.coeff,  // Round down
 				};
 
 				if (problem.vars[varIdx].vartype == VarType::Integer)
@@ -417,7 +490,7 @@ class JumpMove
 		IntegerType bestScore = currentScore;
 		IntegerType bestValue = currentValue;
 		// printf("evaluating best shift buffer size %d \n", bestShiftBuffer.size());
-		for (auto& item : bestShiftBuffer)
+		for (const std::pair< IntegerType, IntegerType >& item : bestShiftBuffer)
 		{
 			currentScore += (item.first - currentValue) * currentSlope;
 			currentSlope += item.second;
@@ -443,6 +516,7 @@ class JumpMove
 
 		// printf("Setting jump for %d to from %g to %g\n", varIdx, problem.incumbentAssignment[varIdx], moves[varIdx].value);
 		moves[varIdx].value = bestValue;
+		assert(bestValue != -1);
 	}
 };
 
@@ -453,7 +527,7 @@ class FeasibilityJumpSolver
 	JumpMove jumpMove;
 
 	std::vector< uint32_t > goodVarsSet;
-	std::vector< int32_t > goodVarsSetIdx;
+	std::vector< uint32_t > goodVarsSetIdx;
 
 	std::mt19937 rng;
 
@@ -485,7 +559,7 @@ class FeasibilityJumpSolver
 	FeasibilityJumpSolver(int seed = 0, int _verbosity = 0, IntegerType _weightUpdateDecay = 1)
 	{
 		verbosity = _verbosity;
-		weightUpdateDecay = _weightUpdateDecay;
+		weightUpdateDecay = std::move(_weightUpdateDecay);
 		rng = std::mt19937(seed);
 	}
 
@@ -510,6 +584,8 @@ class FeasibilityJumpSolver
 				problem.usedRelaxContinuous);
 
 		init(initialValues);
+
+		cout << "initial assignment." << endl;
 
 		for (int step = 0; step < INT_MAX; step += 1)
 		{
@@ -567,15 +643,15 @@ class FeasibilityJumpSolver
 			if (std::uniform_real_distribution< double >(0., 1.)(rng) < randomVarProbability)
 				return goodVarsSet[rng() % goodVarsSet.size()];
 
-			auto sampleSize = std::min(maxMovesToEvaluate, goodVarsSet.size());
+			uint32_t sampleSize = std::min(maxMovesToEvaluate, goodVarsSet.size());
 			totalEffort += sampleSize;
 
 			IntegerType bestScore = PBOINTMIN;
 			uint32_t bestVar = UINT_MAX;
 			for (size_t i = 0; i < sampleSize; i++)
 			{
-				auto setidx = rng() % goodVarsSet.size();
-				auto varIdx = goodVarsSet[setidx];
+				uint32_t setidx = rng() % goodVarsSet.size();
+				uint32_t varIdx = goodVarsSet[setidx];
 				// assert(goodVarsSetIdx[varIdx] >= 0 && goodVarsSetIdx[varIdx] == setidx);
 				Move move = bestMove(varIdx);
 				// assert(move.score > equalityTolerance);
@@ -595,7 +671,7 @@ class FeasibilityJumpSolver
 		if (!problem.violatedConstraints.empty())
 		{
 			size_t cstrIdx = problem.violatedConstraints[rng() % problem.violatedConstraints.size()];
-			auto& constraint = problem.constraints[cstrIdx];
+			Constraint& constraint = problem.constraints[cstrIdx];
 
 			if (std::uniform_real_distribution< double >(0., 1.)(rng) < randomCellProbability)
 				return constraint.coeffs[rng() % constraint.coeffs.size()].idx;
@@ -603,7 +679,7 @@ class FeasibilityJumpSolver
 			IntegerType bestScore = PBOINTMIN;
 			uint32_t bestVarIdx = UINT_MAX;
 
-			for (auto& cell : constraint.coeffs)
+			for (IdxCoeff& cell : constraint.coeffs)
 			{
 				Move move = bestMove(cell.idx);
 				if (move.score > bestScore)
@@ -630,7 +706,7 @@ class FeasibilityJumpSolver
 		if (problem.violatedConstraints.empty())
 		{
 			objectiveWeight += weightUpdateIncrement;
-			if (objectiveWeight > 1.0e20)
+			if (objectiveWeight > 1e20)
 				rescaleAllWeights = true;
 
 			dt += problem.vars.size();
@@ -638,6 +714,7 @@ class FeasibilityJumpSolver
 				forEachMove(
 					varIdx, [&](Move& move)
 					{
+					  assert(move.value != -1);
 					  move.score += weightUpdateIncrement *
 						  problem.vars[varIdx].objectiveCoeff *
 						  (move.value - problem.incumbentAssignment[varIdx]);
@@ -645,19 +722,20 @@ class FeasibilityJumpSolver
 		}
 		else
 		{
-			for (auto& cIdx : problem.violatedConstraints)
+			for (uint32_t& cIdx : problem.violatedConstraints)
 			{
-				auto& constraint = problem.constraints[cIdx];
+				Constraint& constraint = problem.constraints[cIdx];
 				constraint.weight += weightUpdateIncrement;
-				if (constraint.weight > 1.0e20)
+				if (constraint.weight > 1e20)
 					rescaleAllWeights = true;
 
 				dt += constraint.coeffs.size();
-				for (auto& cell : constraint.coeffs)
+				for (IdxCoeff& cell : constraint.coeffs)
 				{
 					forEachMove(
 						cell.idx, [&](Move& move)
 						{
+						  assert(move.value != -1);
 						  IntegerType candidateLhs = constraint.incumbentLhs + cell.coeff * (move.value -
 							  problem.incumbentAssignment[cell.idx]);
 						  IntegerType diff = weightUpdateIncrement * (constraint.score(candidateLhs) -
@@ -673,10 +751,10 @@ class FeasibilityJumpSolver
 		weightUpdateIncrement /= weightUpdateDecay;
 		if (rescaleAllWeights)
 		{
-			weightUpdateIncrement *= 1.0e-20;
+			weightUpdateIncrement = 1;  // FIXME: 0 or 1?
 			objectiveWeight = 0;
 
-			for (auto& c : problem.constraints)
+			for (Constraint& c : problem.constraints)
 				c.weight = 1;
 			dt += problem.constraints.size();
 
@@ -702,8 +780,9 @@ class FeasibilityJumpSolver
 	void doVariableMove(int varIdx)
 	{
 		// First, we get the best move for the variable;
-		auto m = bestMove(varIdx);
+		Move m = bestMove(varIdx);
 		IntegerType newValue = m.value;
+		assert(newValue != -1);
 		// assert(!isnan(newValue));
 
 		// Update the incumbent solution.
@@ -720,7 +799,7 @@ class FeasibilityJumpSolver
 		resetMoves(varIdx);
 	}
 
-	void updateGoodMoves(int32_t varIdx)
+	void updateGoodMoves(uint32_t varIdx)
 	{
 		bool anyGoodMoves = bestMove(varIdx).score > 0.;
 		if (anyGoodMoves && goodVarsSetIdx[varIdx] == -1)
@@ -732,9 +811,9 @@ class FeasibilityJumpSolver
 		else if (!anyGoodMoves && goodVarsSetIdx[varIdx] != -1)
 		{
 			// Became bad, remove from good set.
-			auto lastSetIdx = goodVarsSet.size() - 1;
-			auto lastVarIdx = goodVarsSet[lastSetIdx];
-			auto thisSetIdx = goodVarsSetIdx[varIdx];
+			size_t lastSetIdx = goodVarsSet.size() - 1;
+			uint32_t lastVarIdx = goodVarsSet[lastSetIdx];
+			uint32_t thisSetIdx = goodVarsSetIdx[varIdx];
 			std::swap(goodVarsSet[thisSetIdx], goodVarsSet[lastSetIdx]);
 			goodVarsSetIdx[lastVarIdx] = thisSetIdx;
 			goodVarsSetIdx[varIdx] = -1;
@@ -743,7 +822,7 @@ class FeasibilityJumpSolver
 	}
 
 	template< typename F >
-	void forEachMove(int32_t varIdx, F f)
+	void forEachMove(uint32_t varIdx, F f)
 	{
 		jumpMove.forEachVarMove(varIdx, f);
 
@@ -759,15 +838,16 @@ class FeasibilityJumpSolver
 		forEachMove(
 			varIdx, [&](Move& move)
 			{
+			  assert(move.value != -1);
 			  move.score = 0.0;
 			  move.score += objectiveWeight *
 				  problem.vars[varIdx].objectiveCoeff *
 				  (move.value - problem.incumbentAssignment[varIdx]);
 
-			  for (auto& cell : problem.vars[varIdx].coeffs)
+			  for (IdxCoeff& cell : problem.vars[varIdx].coeffs)
 			  {
-				  auto& constraint = problem.constraints[cell.idx];
-				  auto candidateLhs = constraint.incumbentLhs +
+				  Constraint& constraint = problem.constraints[cell.idx];
+				  IntegerType candidateLhs = constraint.incumbentLhs +
 					  cell.coeff *
 						  (move.value - problem.incumbentAssignment[varIdx]);
 				  move.score += constraint.weight *
@@ -792,10 +872,14 @@ class FeasibilityJumpSolver
 			status.effortSinceLastImprovement = totalEffort - effortAtLastImprovement;
 
 			status.solution = solution;
+			if (solution != nullptr)
+				printIdxOfOneInSolution(solution, problem.vars.size());
+			else
+				cout << "no solution" << endl;
 			status.numVars = problem.vars.size();
 			status.solutionObjectiveValue = problem.incumbentObjective;
 
-			auto result = callback(status);
+			CallbackControlFlow result = callback(status);
 			if (result == CallbackControlFlow::Terminate)
 			{
 				if (verbosity >= 2)
