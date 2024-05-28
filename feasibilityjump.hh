@@ -237,14 +237,14 @@ struct Problem
 			{
 				if (sense == RowType::Lte)
 				{
-					if (rowCoeffs[i] >= 0.)
+					if (rowCoeffs[i] >= 0)
 						rhs -= rowCoeffs[i] * vars[rowVarIdxs[i]].lb;
 					else
 						rhs -= rowCoeffs[i] * vars[rowVarIdxs[i]].ub;
 				}
 				else if (sense == RowType::Gte)
 				{
-					if (rowCoeffs[i] >= 0.)
+					if (rowCoeffs[i] >= 0)
 						rhs -= rowCoeffs[i] * vars[rowVarIdxs[i]].ub;
 					else
 						rhs -= rowCoeffs[i] * vars[rowVarIdxs[i]].lb;
@@ -510,7 +510,7 @@ class JumpMove
 			// Slope is always increasing, so if we have a valid value, we can quit
 			// as soon as the slope turns nonnegative, since we must already have
 			// visited the minimum.
-			if (!eq(bestValue, problem.incumbentAssignment[varIdx]) && currentSlope >= 0.)
+			if (!eq(bestValue, problem.incumbentAssignment[varIdx]) && currentSlope >= 0)
 				break;
 		}
 
@@ -801,7 +801,7 @@ class FeasibilityJumpSolver
 
 	void updateGoodMoves(uint32_t varIdx)
 	{
-		bool anyGoodMoves = bestMove(varIdx).score > 0.;
+		bool anyGoodMoves = bestMove(varIdx).score > 0;
 		if (anyGoodMoves && goodVarsSetIdx[varIdx] == -1)
 		{
 			// Became good, add to good set.
@@ -839,7 +839,7 @@ class FeasibilityJumpSolver
 			varIdx, [&](Move& move)
 			{
 			  assert(move.value != -1);
-			  move.score = 0.0;
+			  move.score = 0;
 			  move.score += objectiveWeight *
 				  problem.vars[varIdx].objectiveCoeff *
 				  (move.value - problem.incumbentAssignment[varIdx]);

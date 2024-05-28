@@ -174,6 +174,8 @@ class SimpleParser
 	int nbVars, nbConstr; // MetaData: #Variables and #Constraints in file.
 
 	int nbProduct, sizeProduct; // MetaData for non linear format
+	int nEqual; // MetaData for number of equal constraints
+	int intSize;
 	ProductStore< Callback > store;
 	bool autoLinearize; // should the parser linearize constraints ?
 
@@ -341,16 +343,26 @@ class SimpleParser
 		{
 			// assume non linear format
 			in >> s;
-			if (eof() || s != "#product=")
-				throw runtime_error("First line should contain #product= as third keyword");
-
-			in >> nbProduct;
+			if (eof() || (s != "#product=" && s != "#equal="))
+				throw runtime_error("First line should contain #product= or #equal= as third keyword");
+			else
+			{
+				if (s == "#equal=")
+					in >> nEqual;
+				else
+					in >> nbProduct;
+			}
 
 			in >> s;
-			if (eof() || s != "sizeproduct=")
-				throw runtime_error("First line should contain sizeproduct= as fourth keyword");
-
-			in >> sizeProduct;
+			if (eof() || (s != "sizeproduct=" && s != "intsize="))
+				throw runtime_error("First line should contain sizeproduct= or intsize= as fourth keyword");
+			else
+			{
+				if (s == "sizeproduct=")
+					in >> sizeProduct;
+				else
+					in >> intSize;
+			}
 		}
 
 		// skip the rest of the line
