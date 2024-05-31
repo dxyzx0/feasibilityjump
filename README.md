@@ -1,4 +1,4 @@
-# Feasibility Jump
+# Feasibility Jump with Big Integer Support
 
 This repository contains the reference C++ implementation of the Feasibility
 Jump, which is a primal heuristic for mixed-integer linear programming.
