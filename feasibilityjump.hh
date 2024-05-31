@@ -218,7 +218,7 @@ struct Problem
 		return idx;
 	}
 
-	size_t addConstraint(RowType sense, IntegerType rhs, long numCoeffs, long* rowVarIdxs, IntegerType* rowCoeffs,
+	size_t addConstraint(RowType sense, IntegerType rhs, size_t numCoeffs, size_t* rowVarIdxs, IntegerType* rowCoeffs,
 		int relax_continuous)
 	{
 		if (relax_continuous)
@@ -583,7 +583,7 @@ class FeasibilityJumpSolver
 		return problem.addVar(vartype, lb, ub, objCoeff);
 	}
 
-	size_t addConstraint(RowType sense, IntegerType rhs, long numCoeffs, long* rowVarIdxs, IntegerType* rowCoeffs,
+	size_t addConstraint(RowType sense, IntegerType rhs, size_t numCoeffs, size_t* rowVarIdxs, IntegerType* rowCoeffs,
 		int relax_continuous)
 	{
 		return problem.addConstraint(sense, rhs, numCoeffs, rowVarIdxs, rowCoeffs, relax_continuous);
