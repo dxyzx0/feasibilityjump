@@ -14,7 +14,7 @@
 #include "type.h"
 
 using namespace std;
-const size_t NUM_THREADS = 4;
+size_t NUM_THREADS = 1;
 
 std::atomic_size_t global_thread_rank(0);
 std::atomic_size_t totalNumSolutionsFound(0);
@@ -433,6 +433,14 @@ int main(int argc, char* argv[])
 //            relaxContinuous = true;
 //        else if (argvi == "--exponential-decay" || argvi == "-e")
 //            exponentialDecay = true;
+		else if (argvi == "--jobs" || argvi == "-j")
+		{
+			if (i + 1 < argc)
+				NUM_THREADS = std::stoi(argv[i + 1]);
+			else
+				return printUsage();
+			i += 1;
+		}
 		else if (!inputPath.empty())
 			return printUsage();
 		else
