@@ -228,7 +228,7 @@ struct Problem
 		assert(relax_continuous == 0);
 //        if (relax_continuous > 0 && sense == RowType::Equal)
 //            if (std::any_of(rowVarIdxs, rowVarIdxs + numCoeffs,
-//                            [&](long varIdx) { return vars[varIdx].vartype == VarType::Continuous; })) {
+//                            [&](size_t varIdx) { return vars[varIdx].vartype == VarType::Continuous; })) {
 //                addConstraint(RowType::Gte, rhs, numCoeffs, rowVarIdxs, rowCoeffs, relax_continuous);
 //                addConstraint(RowType::Lte, rhs, numCoeffs, rowVarIdxs, rowCoeffs, relax_continuous);
 //                return INT_MAX;
@@ -873,7 +873,7 @@ class FeasibilityJumpSolver
 
 	bool user_terminate(std::function< CallbackControlFlow(FJStatus) > callback, IntegerType* solution)
 	{
-		const long CALLBACK_EFFORT = 500000;
+		const size_t CALLBACK_EFFORT = 500000;
 		if (solution != nullptr || totalEffort - effortAtLastCallback > CALLBACK_EFFORT)
 		{
 			if (verbosity >= 2)

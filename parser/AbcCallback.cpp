@@ -32,39 +32,23 @@ void AbcCallback::endConstraint()
 {
 	DefaultCallback::endConstraint();
 
-	vector< Eigen::Triplet< IntegerType > > tmp_triplet;
-
 	if (iRelOp == "=")
 	{
-		for (auto& t : tmp_trip)
-		{
-			tmp_triplet.emplace_back(iConsEq, get<0>(t), get<1>(t));
-		}
-		A_eq_trip.insert(A_eq_trip.end(), tmp_triplet.begin(), tmp_triplet.end());
-		b_eq.emplace_back(iConsEq, get<1>(b.back()));
+		b_eq.emplace_back(iConsEq, get< 1 >(b.back()));
 		iConsEq++;
 	}
 	else
 	{
 		assert(iRelOp == ">=");  // only support >= for now
-		for (auto& t : tmp_trip)
-		{
-			tmp_triplet.emplace_back(iConsIneq, get<0>(t), get<1>(t));
-		}
-		A_ineq_trip.insert(A_ineq_trip.end(), tmp_triplet.begin(), tmp_triplet.end());
-		b_ineq.emplace_back(iConsIneq, get<1>(b.back()));
+		b_ineq.emplace_back(iConsIneq, get< 1 >(b.back()));
 		iConsIneq++;
 	}
 
-	for (auto& t : tmp_triplet)
-	{
-		cout << t.row() << " " << t.col() << " " << t.value() << endl;
-	}
 	cout << "RelOp: " << iRelOp << endl;
-	cout << "b: " << get<1>(b.back()) << endl;
+	cout << "b: " << get< 1 >(b.back()) << endl;
 
 	tmp_trip.clear();
-	iCons ++;
+	iCons++;
 
 }
 
@@ -87,43 +71,32 @@ void AbcCallback::linearizeProduct(int newSymbol, std::vector< int > product)
 	throw std::runtime_error("Not implemented");
 }
 
-const std::vector< std::tuple< long, long, IntegerType > >& AbcCallback::getA()
+const std::vector< std::tuple< size_t, size_t, IntegerType > >& AbcCallback::getA()
 {
 	return A;
 }
 
-const std::vector< Eigen::Triplet < IntegerType > >& AbcCallback::getA_eq()
-{
-	return A_eq_trip;
-}
-
-const std::vector< Eigen::Triplet < IntegerType > >& AbcCallback::getA_ineq()
-{
-	return A_ineq_trip;
-}
-
-
-const std::vector< std::tuple< long, string > >& AbcCallback::getRelOp()
+const std::vector< std::tuple< size_t, string > >& AbcCallback::getRelOp()
 {
 	return relOp;
 }
 
-const std::vector< std::tuple< long, IntegerType > >& AbcCallback::getB()
+const std::vector< std::tuple< size_t, IntegerType > >& AbcCallback::getB()
 {
 	return b;
 }
 
-const std::vector< std::tuple< long, IntegerType > >& AbcCallback::getB_eq()
+const std::vector< std::tuple< size_t, IntegerType > >& AbcCallback::getB_eq()
 {
 	return b_eq;
 }
 
-const std::vector< std::tuple< long, IntegerType > >& AbcCallback::getB_ineq()
+const std::vector< std::tuple< size_t, IntegerType > >& AbcCallback::getB_ineq()
 {
 	return b_ineq;
 }
 
-const std::vector< std::tuple< long, IntegerType > >& AbcCallback::getC()
+const std::vector< std::tuple< size_t, IntegerType > >& AbcCallback::getC()
 {
 	return c;
 }

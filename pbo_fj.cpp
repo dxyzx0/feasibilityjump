@@ -10,7 +10,7 @@
 #include <iostream>
 #include "parser/AbcCallback.h"
 #include "parser/SimpleParser.h"
-#include "feasibilityjump.hh"
+#include "feasibilityjump.h"
 #include "type.h"
 
 using namespace std;
@@ -44,7 +44,7 @@ struct ProblemInstance
 	std::vector< size_t > rowStart;
 	std::vector< size_t > colIdxs;
 	std::vector< IntegerType > colCoeffs;
-	std::vector< tuple< long, string > > rowRelOp;
+	std::vector< tuple< size_t, string > > rowRelOp;
 };
 
 struct FJData
@@ -61,7 +61,6 @@ std::string outDir;
 
 ProblemInstance getProblemData(AbcCallback& abcCallback)
 {
-	// TODO: CHANGE IT
 	ProblemInstance data;
 	data.numCols = abcCallback.getNVar();
 
@@ -75,7 +74,7 @@ ProblemInstance getProblemData(AbcCallback& abcCallback)
 
 	for (const auto& i : abcCallback.getC())
 	{
-		long idx = std::get< 0 >(i);
+		size_t idx = std::get< 0 >(i);
 		IntegerType val = std::get< 1 >(i);
 		data.objCoeffs[idx] = val;
 	}
@@ -86,8 +85,7 @@ ProblemInstance getProblemData(AbcCallback& abcCallback)
 	data.rowRelOp = abcCallback.getRelOp();
 	for (size_t i = 0; i < data.numRows; i++)
 	{
-		long idx = std::get< 0 >(data.rowRelOp[i]);
-		assert(idx == i);
+		assert(i == std::get< 0 >(data.rowRelOp[i]));
 		std::string relOp = std::get< 1 >(data.rowRelOp[i]);
 		if (relOp == "=") data.rowtypes[i] = 'E';
 		else if (relOp == ">=") data.rowtypes[i] = 'G';
@@ -98,8 +96,7 @@ ProblemInstance getProblemData(AbcCallback& abcCallback)
 	data.rhs = std::vector< IntegerType >(data.numRows);
 	for (size_t i = 0; i < data.numRows; i++)
 	{
-		long idx = std::get< 0 >(abcCallback.getB()[i]);
-		assert(idx == i);
+		assert(i == std::get< 0 >(abcCallback.getB()[i]));
 		data.rhs[i] = std::get< 1 >(abcCallback.getB()[i]);
 	}
 
@@ -116,12 +113,12 @@ ProblemInstance getProblemData(AbcCallback& abcCallback)
 
 
 	size_t i = 0;
-	long row = 0;
+	size_t row = 0;
 	for (const auto& t : abcCallback.getA())
 	{
 		data.colIdxs[i] = get< 1 >(t);
 		data.colCoeffs[i] = get< 2 >(t);
-		long row_i = get< 0 >(t);
+		size_t row_i = get< 0 >(t);
 		if (row_i != row)
 		{
 			data.rowStart[row + 1] = i;
@@ -198,7 +195,7 @@ ProblemInstance getProblemData(AbcCallback& abcCallback)
 bool copyDataToHeuristicSolver(FeasibilityJumpSolver& solver, ProblemInstance& data, int relaxContinuous)
 {
 	printf("initializing FJ with %zu vars %zu constraints\n", data.numCols, data.numRows);
-	for (long colIdx = 0; colIdx < data.numCols; colIdx += 1)
+	for (size_t colIdx = 0; colIdx < data.numCols; colIdx += 1)
 	{
 		VarType vartype = VarType::Continuous;
 		if (data.varTypes[colIdx] == 'B')
@@ -215,7 +212,7 @@ bool copyDataToHeuristicSolver(FeasibilityJumpSolver& solver, ProblemInstance& d
 		solver.addVar(vartype, data.lb[colIdx], data.ub[colIdx], data.objCoeffs[colIdx]);
 	}
 
-	for (long rowIdx = 0; rowIdx < data.numRows; rowIdx += 1)
+	for (size_t rowIdx = 0; rowIdx < data.numRows; rowIdx += 1)
 	{
 		assert(data.rowtypes[rowIdx] == 'G' || data.rowtypes[rowIdx] == 'E');
 		RowType rowtype;

@@ -10,25 +10,23 @@
 #include <string>
 #include "DefaultCallback.h"
 #include "../type_int.h"
-#include "../Eigen/Sparse"
 
 using namespace std;
 
 class AbcCallback : public DefaultCallback
 {
  private:
-	vector< tuple< long, long, IntegerType > > A;
-	vector< Eigen::Triplet< IntegerType > > A_eq_trip, A_ineq_trip;
-	vector< tuple< long, string>> relOp;
-	vector< tuple< long, IntegerType > > b;
-	vector< tuple< long, IntegerType > > b_eq, b_ineq;
-	vector< tuple< long, IntegerType>> c;
-	long nVar;
-	long nCons;
-	long iCons;
-	long iConsEq, iConsIneq;
+	vector< tuple< size_t, size_t, IntegerType > > A;
+	vector< tuple< size_t, string > > relOp;
+	vector< tuple< size_t, IntegerType > > b;
+	vector< tuple< size_t, IntegerType > > b_eq, b_ineq;
+	vector< tuple< size_t, IntegerType > > c;
+	size_t nVar;
+	size_t nCons;
+	size_t iCons;
+	size_t iConsEq, iConsIneq;
 	string iRelOp;
-	vector< tuple< long, IntegerType > > tmp_trip;
+	vector< tuple< size_t, IntegerType > > tmp_trip;
  public:
 	void metaData(int nbvar, int nbconstr) override;
 //    void beginObjective() override;
@@ -40,27 +38,25 @@ class AbcCallback : public DefaultCallback
 	void constraintRelOp(std::string relop) override;
 	void constraintRightTerm(IntegerType val) override;
 	void linearizeProduct(int newSymbol, std::vector< int > product) override;
-	const std::vector< std::tuple< long, long, IntegerType > >& getA();
-	const std::vector< Eigen::Triplet< IntegerType > >& getA_eq();
-	const std::vector< Eigen::Triplet< IntegerType > >& getA_ineq();
-	const std::vector< std::tuple< long, string > >& getRelOp();
-	const std::vector< std::tuple< long, IntegerType > >& getB();
-	const std::vector< std::tuple< long, IntegerType > >& getB_eq();
-	const std::vector< std::tuple< long, IntegerType > >& getB_ineq();
-	const std::vector< std::tuple< long, IntegerType > >& getC();
-	long getNVar() const
+	const std::vector< std::tuple< size_t, size_t, IntegerType > >& getA();
+	const std::vector< std::tuple< size_t, string > >& getRelOp();
+	const std::vector< std::tuple< size_t, IntegerType > >& getB();
+	const std::vector< std::tuple< size_t, IntegerType > >& getB_eq();
+	const std::vector< std::tuple< size_t, IntegerType > >& getB_ineq();
+	const std::vector< std::tuple< size_t, IntegerType > >& getC();
+	size_t getNVar() const
 	{
 		return nVar;
 	}
-	long getNCons() const
+	size_t getNCons() const
 	{
 		return nCons;
 	}
-	long getNConsEq() const
+	size_t getNConsEq() const
 	{
 		return iConsEq;
 	}
-	long getNConsIneq() const
+	size_t getNConsIneq() const
 	{
 		return iConsIneq;
 	}
