@@ -8,7 +8,7 @@
 #include <algorithm>
 #include "type.h"
 
-#define FJ_LOG_PREFIX "Feasibility Jump: "
+#define FJ_LOG_PREFIX "(FJ) "
 
 struct Solution
 {
@@ -26,14 +26,16 @@ void printSolution(const Solution& s)
 	cout << endl;
 }
 
-void printIdxOfOneInSolution(const Solution& s)
+void printIdxOfOneInSolution(const Solution& s, size_t thread_rank)
 {
-	cout << "solution: ";
+	string str = "solution: ";
 	for (size_t i = 0; i < s.assignment.size(); i += 1)
 	{
 		if (s.assignment[i] == 1)
-			cout << i << " ";
+			str += to_string(i) + " ";
 	}
+	str += "\n";
+	printf(FJ_LOG_PREFIX "%s", str.c_str());
 }
 
 void printSolution(IntegerType* s, size_t n)
@@ -46,15 +48,17 @@ void printSolution(IntegerType* s, size_t n)
 	cout << endl;
 }
 
-void printIdxOfOneInSolution(IntegerType* s, size_t n)
+void printIdxOfOneInSolution(IntegerType* s, size_t n, size_t thread_rank)
 {
-	cout << "solution: ";
+	string str = "solution: ";
 	for (size_t i = 0; i < n; i += 1)
 	{
 		if (s[i] == 1)
-			cout << i << " ";
+			str += to_string(i) + " ";
 	}
-	cout << endl;
+	str += "\n";
+	printf(FJ_LOG_PREFIX "%zu: %s", thread_rank, str.c_str());
+
 }
 
 void printVector(const std::vector< IntegerType >& v)
@@ -99,9 +103,9 @@ enum CallbackControlFlow
 
 struct FJStatus
 {
-	int totalEffort;
-	int effortSinceLastImprovement;
-	int numVars;
+	size_t totalEffort;
+	size_t effortSinceLastImprovement;
+	size_t numVars;
 	IntegerType solutionObjectiveValue;
 	IntegerType* solution;
 };
@@ -117,10 +121,10 @@ bool eq(IntegerType a, IntegerType b)
 
 struct IdxCoeff
 {
-	uint32_t idx;
+	size_t idx;
 	IntegerType coeff;
 
-	IdxCoeff(uint32_t idx, IntegerType coeff) : idx(idx), coeff(coeff)
+	IdxCoeff(size_t idx, IntegerType coeff) : idx(idx), coeff(coeff)
 	{
 	}
 };
@@ -141,7 +145,7 @@ struct Constraint
 	std::vector< IdxCoeff > coeffs;
 	IntegerType weight;
 	IntegerType incumbentLhs;
-	uint32_t violatedIdx;
+	size_t violatedIdx;
 	IntegerType zero = 0;
 
 	// Computes the constraint's contribution to the feasibility score:
@@ -180,8 +184,8 @@ struct Move
 // update the score of a `Move` to reflect the LHS modification.
 struct LhsModification
 {
-	uint32_t varIdx;
-	uint32_t constraintIdx;
+	size_t varIdx;
+	size_t constraintIdx;
 	IntegerType coeff;
 	IntegerType oldLhs;
 	IntegerType newLhs;
@@ -195,13 +199,13 @@ struct Problem
 	std::vector< Var > vars;
 	std::vector< Constraint > constraints;
 	std::vector< IntegerType > incumbentAssignment;
-	std::vector< uint32_t > violatedConstraints;
+	std::vector< size_t > violatedConstraints;
 	bool usedRelaxContinuous = false;
 
 	size_t nNonzeros;
 	IntegerType incumbentObjective = 0;  // FIXME
 
-	int addVar(VarType vartype, IntegerType lb, IntegerType ub, IntegerType objCoeff)
+	size_t addVar(VarType vartype, IntegerType lb, IntegerType ub, IntegerType objCoeff)
 	{
 		size_t idx = vars.size();
 		Var var;
@@ -214,7 +218,7 @@ struct Problem
 		return idx;
 	}
 
-	int addConstraint(RowType sense, IntegerType rhs, long numCoeffs, long* rowVarIdxs, IntegerType* rowCoeffs,
+	size_t addConstraint(RowType sense, IntegerType rhs, long numCoeffs, long* rowVarIdxs, IntegerType* rowCoeffs,
 		int relax_continuous)
 	{
 		if (relax_continuous)
@@ -231,7 +235,7 @@ struct Problem
 //            }
 
 		std::vector< IdxCoeff > coeffs;
-		for (int i = 0; i < numCoeffs; i += 1)
+		for (size_t i = 0; i < numCoeffs; i += 1)
 		{
 			if (relax_continuous > 0 && vars[rowVarIdxs[i]].vartype == VarType::Continuous)
 			{
@@ -269,7 +273,7 @@ struct Problem
 			return ok ? INT_MAX : INT_MIN;
 		}
 
-		int newConstraintIdx = constraints.size();
+		size_t newConstraintIdx = constraints.size();
 		for (IdxCoeff& c : coeffs)
 		{
 			vars[c.idx].coeffs.emplace_back(newConstraintIdx, c.coeff);
@@ -330,7 +334,7 @@ struct Problem
 	// for every variable/constraint combination (except for `varIdx` itself)
 	// where the LHS of the constraint has changed.
 	template< typename F >
-	size_t setValue(int varIdx, IntegerType newValue, F f)
+	size_t setValue(size_t varIdx, IntegerType newValue, F f)
 	{
 		size_t dt = 0;
 		IntegerType oldValue = incumbentAssignment[varIdx];
@@ -358,8 +362,8 @@ struct Problem
 			{
 				// Became satisfied.
 				size_t lastViolatedIdx = violatedConstraints.size() - 1;
-				uint32_t lastConstraintIdx = violatedConstraints[lastViolatedIdx];
-				uint32_t thisViolatedIdx = constraints[cstrCoeff.idx].violatedIdx;
+				size_t lastConstraintIdx = violatedConstraints[lastViolatedIdx];
+				size_t thisViolatedIdx = constraints[cstrCoeff.idx].violatedIdx;
 				std::swap(violatedConstraints[thisViolatedIdx], violatedConstraints[lastViolatedIdx]);
 				constraints[lastConstraintIdx].violatedIdx = thisViolatedIdx;
 				constraints[cstrCoeff.idx].violatedIdx = -1;
@@ -413,12 +417,12 @@ class JumpMove
 	}
 
 	template< typename F >
-	void forEachVarMove(uint32_t varIdx, F f)
+	void forEachVarMove(size_t varIdx, F f)
 	{
 		f(moves[varIdx]);
 	}
 
-	void updateValue(Problem& problem, uint32_t varIdx)
+	void updateValue(Problem& problem, size_t varIdx)
 	{
 		bestShiftBuffer.clear();
 		IntegerType varIncumbentValue = problem.incumbentAssignment[varIdx];
@@ -526,8 +530,8 @@ class FeasibilityJumpSolver
 	Problem problem;
 	JumpMove jumpMove;
 
-	std::vector< uint32_t > goodVarsSet;
-	std::vector< uint32_t > goodVarsSetIdx;
+	std::vector< size_t > goodVarsSet;
+	std::vector< size_t > goodVarsSetIdx;
 
 	std::mt19937 rng;
 
@@ -543,6 +547,10 @@ class FeasibilityJumpSolver
 
 	size_t nBumps;
 
+	int seed;
+
+	size_t thread_rank;
+
 	// The probability of choosing a random positive-score variable.
 	const double randomVarProbability = 0.001;
 
@@ -556,20 +564,26 @@ class FeasibilityJumpSolver
 	const size_t maxMovesToEvaluate = 25;
 
  public:
-	FeasibilityJumpSolver(int seed = 0, int _verbosity = 0, IntegerType _weightUpdateDecay = 1)
+	explicit FeasibilityJumpSolver(int _seed = 0,
+		int _verbosity = 0,
+		IntegerType _weightUpdateDecay = 1,
+		size_t _thread_rank = 0)
 	{
 		verbosity = _verbosity;
 		weightUpdateDecay = std::move(_weightUpdateDecay);
+		thread_rank = _thread_rank;
+		seed = _seed;
 		rng = std::mt19937(seed);
+		nBumps = 0;
 	}
 
-	int addVar(VarType vartype, IntegerType lb, IntegerType ub, IntegerType objCoeff)
+	size_t addVar(VarType vartype, IntegerType lb, IntegerType ub, IntegerType objCoeff)
 	{
 		goodVarsSetIdx.push_back(-1);
 		return problem.addVar(vartype, lb, ub, objCoeff);
 	}
 
-	int addConstraint(RowType sense, IntegerType rhs, long numCoeffs, long* rowVarIdxs, IntegerType* rowCoeffs,
+	size_t addConstraint(RowType sense, IntegerType rhs, long numCoeffs, long* rowVarIdxs, IntegerType* rowCoeffs,
 		int relax_continuous)
 	{
 		return problem.addConstraint(sense, rhs, numCoeffs, rowVarIdxs, rowCoeffs, relax_continuous);
@@ -579,23 +593,22 @@ class FeasibilityJumpSolver
 	{
 		assert(callback);
 		if (verbosity >= 1)
-			printf(FJ_LOG_PREFIX "starting solve. weightUpdateDecay=%s, relaxContinuous=%d  \n",
-				weightUpdateDecay.get_str().c_str(),
-				problem.usedRelaxContinuous);
+			printf(FJ_LOG_PREFIX "%zu: starting solve. weightUpdateDecay=%s, relaxContinuous=%d, seed=%d \n",
+				thread_rank, weightUpdateDecay.get_str().c_str(), problem.usedRelaxContinuous, seed);
 
 		init(initialValues);
 
 		cout << "initial assignment." << endl;
 
-		for (int step = 0; step < INT_MAX; step += 1)
+		for (size_t step = 0; step < INT_MAX; step += 1)
 		{
 			if (user_terminate(callback, nullptr))
 				break;
 
-			if (step % 100000 == 0)
+			if (step % 1000 == 0)
 			{
 				if (verbosity >= 1)
-					printf(FJ_LOG_PREFIX "step %d viol %zd good %zd bumps %zd\n", step,
+					printf(FJ_LOG_PREFIX "%zu: step %zu viol %zd good %zd bumps %zd\n", thread_rank, step,
 						problem.violatedConstraints.size(), goodVarsSet.size(), nBumps);
 			}
 
@@ -613,10 +626,10 @@ class FeasibilityJumpSolver
 					break;
 			}
 
-			if (problem.vars.size() == 0)
+			if (problem.vars.empty())
 				break;
 
-			uint32_t var = selectVariable();
+			size_t var = selectVariable();
 			doVariableMove(var);
 		}
 
@@ -636,22 +649,22 @@ class FeasibilityJumpSolver
 			resetMoves(i);
 	}
 
-	uint32_t selectVariable()
+	size_t selectVariable()
 	{
 		if (!goodVarsSet.empty())
 		{
 			if (std::uniform_real_distribution< double >(0., 1.)(rng) < randomVarProbability)
 				return goodVarsSet[rng() % goodVarsSet.size()];
 
-			uint32_t sampleSize = std::min(maxMovesToEvaluate, goodVarsSet.size());
+			size_t sampleSize = std::min(maxMovesToEvaluate, goodVarsSet.size());
 			totalEffort += sampleSize;
 
 			IntegerType bestScore = PBOINTMIN;
-			uint32_t bestVar = UINT_MAX;
+			size_t bestVar = UINT_MAX;
 			for (size_t i = 0; i < sampleSize; i++)
 			{
-				uint32_t setidx = rng() % goodVarsSet.size();
-				uint32_t varIdx = goodVarsSet[setidx];
+				size_t setidx = rng() % goodVarsSet.size();
+				size_t varIdx = goodVarsSet[setidx];
 				// assert(goodVarsSetIdx[varIdx] >= 0 && goodVarsSetIdx[varIdx] == setidx);
 				Move move = bestMove(varIdx);
 				// assert(move.score > equalityTolerance);
@@ -677,7 +690,7 @@ class FeasibilityJumpSolver
 				return constraint.coeffs[rng() % constraint.coeffs.size()].idx;
 
 			IntegerType bestScore = PBOINTMIN;
-			uint32_t bestVarIdx = UINT_MAX;
+			size_t bestVarIdx = UINT_MAX;
 
 			for (IdxCoeff& cell : constraint.coeffs)
 			{
@@ -698,7 +711,7 @@ class FeasibilityJumpSolver
 	void updateWeights()
 	{
 		if (verbosity >= 2)
-			printf(FJ_LOG_PREFIX "Reached a local minimum.\n");
+			printf(FJ_LOG_PREFIX "%zu: Reached a local minimum.\n", thread_rank);
 		nBumps += 1;
 		bool rescaleAllWeights = false;
 		size_t dt = 0;
@@ -722,7 +735,7 @@ class FeasibilityJumpSolver
 		}
 		else
 		{
-			for (uint32_t& cIdx : problem.violatedConstraints)
+			for (size_t& cIdx : problem.violatedConstraints)
 			{
 				Constraint& constraint = problem.constraints[cIdx];
 				constraint.weight += weightUpdateIncrement;
@@ -765,7 +778,7 @@ class FeasibilityJumpSolver
 		totalEffort += dt;
 	}
 
-	Move bestMove(uint32_t varIdx)
+	Move bestMove(size_t varIdx)
 	{
 		Move best = Move::undef();
 		forEachMove(varIdx, [&](Move& move)
@@ -777,7 +790,7 @@ class FeasibilityJumpSolver
 		return best;
 	}
 
-	void doVariableMove(int varIdx)
+	void doVariableMove(size_t varIdx)
 	{
 		// First, we get the best move for the variable;
 		Move m = bestMove(varIdx);
@@ -799,7 +812,7 @@ class FeasibilityJumpSolver
 		resetMoves(varIdx);
 	}
 
-	void updateGoodMoves(uint32_t varIdx)
+	void updateGoodMoves(size_t varIdx)
 	{
 		bool anyGoodMoves = bestMove(varIdx).score > 0;
 		if (anyGoodMoves && goodVarsSetIdx[varIdx] == -1)
@@ -812,8 +825,8 @@ class FeasibilityJumpSolver
 		{
 			// Became bad, remove from good set.
 			size_t lastSetIdx = goodVarsSet.size() - 1;
-			uint32_t lastVarIdx = goodVarsSet[lastSetIdx];
-			uint32_t thisSetIdx = goodVarsSetIdx[varIdx];
+			size_t lastVarIdx = goodVarsSet[lastSetIdx];
+			size_t thisSetIdx = goodVarsSetIdx[varIdx];
 			std::swap(goodVarsSet[thisSetIdx], goodVarsSet[lastSetIdx]);
 			goodVarsSetIdx[lastVarIdx] = thisSetIdx;
 			goodVarsSetIdx[varIdx] = -1;
@@ -822,7 +835,7 @@ class FeasibilityJumpSolver
 	}
 
 	template< typename F >
-	void forEachMove(uint32_t varIdx, F f)
+	void forEachMove(size_t varIdx, F f)
 	{
 		jumpMove.forEachVarMove(varIdx, f);
 
@@ -830,7 +843,7 @@ class FeasibilityJumpSolver
 		// upDownMove.forEachVarMove(varIdx, f);
 	}
 
-	void resetMoves(uint32_t varIdx)
+	void resetMoves(size_t varIdx)
 	{
 		totalEffort += problem.vars[varIdx].coeffs.size();
 		jumpMove.updateValue(problem, varIdx);
@@ -860,11 +873,11 @@ class FeasibilityJumpSolver
 
 	bool user_terminate(std::function< CallbackControlFlow(FJStatus) > callback, IntegerType* solution)
 	{
-		const int CALLBACK_EFFORT = 500000;
+		const long CALLBACK_EFFORT = 500000;
 		if (solution != nullptr || totalEffort - effortAtLastCallback > CALLBACK_EFFORT)
 		{
 			if (verbosity >= 2)
-				printf(FJ_LOG_PREFIX "calling user termination.\n");
+				printf(FJ_LOG_PREFIX "%zu: calling user termination.\n", thread_rank);
 			effortAtLastCallback = totalEffort;
 
 			FJStatus status;
@@ -873,9 +886,9 @@ class FeasibilityJumpSolver
 
 			status.solution = solution;
 			if (solution != nullptr)
-				printIdxOfOneInSolution(solution, problem.vars.size());
+				printIdxOfOneInSolution(solution, problem.vars.size(), thread_rank);
 			else
-				cout << "no solution" << endl;
+				printf(FJ_LOG_PREFIX "%zu: no solution.\n", thread_rank);
 			status.numVars = problem.vars.size();
 			status.solutionObjectiveValue = problem.incumbentObjective;
 
@@ -883,7 +896,7 @@ class FeasibilityJumpSolver
 			if (result == CallbackControlFlow::Terminate)
 			{
 				if (verbosity >= 2)
-					printf(FJ_LOG_PREFIX "quitting.\n");
+					printf(FJ_LOG_PREFIX "%zu: quitting.\n", thread_rank);
 				return true;
 			}
 		}

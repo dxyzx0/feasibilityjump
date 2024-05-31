@@ -26,8 +26,9 @@ extern "C"
 #include <iostream>
 
 using namespace std;
-const int NUM_THREADS = 1;
+const int NUM_THREADS = 4;
 
+std::atomic_size_t global_thread_rank(0);
 std::atomic_size_t totalNumSolutionsFound(0);
 std::atomic_size_t totalNumSolutionsAdded(0);
 std::atomic_bool presolveFinished(false);
@@ -408,7 +409,7 @@ void mapHeuristicSolution(FJStatus& status)
 	}
 }
 
-const int maxEffort = 100000000;
+const size_t maxEffort = 99999999999L;
 
 // Starts background threads running the Feasibility Jump heuristic.
 // Also installs the check-time callback to report any feasible solutions
@@ -425,14 +426,17 @@ void start_feasibility_jump_heuristic(AbcCallback& abcCallback, size_t maxTotalS
 		auto allThreadsTerminated = std::make_shared< Defer >([]()
 		{ heuristicFinished = true; });
 
+		std::cout << "Number of threads: " << NUM_THREADS << std::endl;
 		for (int thread_idx = 0; thread_idx < NUM_THREADS; thread_idx += 1)
 		{
 			auto seed = thread_idx;
 			bool usePresolved = thread_idx % 2 == 1;
-			double decayFactor = (!exponentialDecay) ? 1.0 : 0.9999;
+			double decayFactor = (!exponentialDecay) ? 1 : 1;
 			auto f = [verbose, maxTotalSolutions, usePresolved, seed,
 				relaxContinuous, decayFactor, allThreadsTerminated, &abcCallback]()
 			{
+				// Increment the thread rank.
+			  size_t thread_rank = global_thread_rank++;
 			  // Prepare data for the non-presolved version.
 			  {
 				  std::lock_guard< std::mutex > guard(nonPresolvedProblem_mutex);
@@ -442,24 +446,8 @@ void start_feasibility_jump_heuristic(AbcCallback& abcCallback, size_t maxTotalS
 				  }
 			  }
 
-			  // Produce the presolved solution
-//                    if (usePresolved)
-//                    {
-//                        std::lock_guard<std::mutex> guard(presolvedProblem_mutex);
-//                        if (gFJData.presolvedProblemCopy == nullptr)
-//                        {
-//                            XPRScreateprob(&gFJData.presolvedProblemCopy);
-//                            XPRSsetlogfile(gFJData.presolvedProblemCopy, "presolve.log");
-//                            XPRScopyprob(gFJData.presolvedProblemCopy, gFJData.originalProblemCopy, "");
-//                            XPRSsetintcontrol(gFJData.presolvedProblemCopy, XPRS_LPITERLIMIT, 0);
-//
-//                            XPRSmipoptimize(gFJData.presolvedProblemCopy, "");
-//                            gFJData.presolvedData = getXPRSProblemData(gFJData.presolvedProblemCopy);
-//                        }
-//                    }
-
 			  ProblemInstance& data = gFJData.originalData;
-			  FeasibilityJumpSolver solver(seed, verbose, decayFactor);
+			  FeasibilityJumpSolver solver(seed, verbose, decayFactor, thread_rank);
 			  bool copyOk = copyDataToHeuristicSolver(solver, data, relaxContinuous);
 			  if (!copyOk)
 			  {
@@ -468,7 +456,7 @@ void start_feasibility_jump_heuristic(AbcCallback& abcCallback, size_t maxTotalS
 			  }
 
 			  solver.solve(
-				  nullptr, [maxTotalSolutions, usePresolved](FJStatus status) -> CallbackControlFlow
+				  nullptr, [maxTotalSolutions, usePresolved, thread_rank](FJStatus status) -> CallbackControlFlow
 				  {
 
 					double time = std::chrono::duration_cast< std::chrono::milliseconds >(
@@ -480,7 +468,7 @@ void start_feasibility_jump_heuristic(AbcCallback& abcCallback, size_t maxTotalS
 						char* solutionObjectiveValueStr =
 							mpz_get_str(nullptr, 10, status.solutionObjectiveValue.get_mpz_t());
 //
-						printf("FJSOL %g %s\n", time, solutionObjectiveValueStr);
+						printf("(FJSOL) %zu: %g %s\n", thread_rank, time, solutionObjectiveValueStr);
 						free(solutionObjectiveValueStr);
 						mapHeuristicSolution(status);
 					}
@@ -488,89 +476,26 @@ void start_feasibility_jump_heuristic(AbcCallback& abcCallback, size_t maxTotalS
 					// If we have enough solutions or spent enough time, quit.
 					auto quitNumSol = totalNumSolutionsFound >= maxTotalSolutions;
 					if (quitNumSol)
-						printf(FJ_LOG_PREFIX "quitting because number of solutions %zd >= %zd.\n",
+						printf(FJ_LOG_PREFIX "%zu: quitting because number of solutions %zd >= %zd.\n", thread_rank,
 							totalNumSolutionsFound.load(), maxTotalSolutions);
 					auto quitEffort = status.effortSinceLastImprovement > maxEffort;
 					if (quitEffort)
-						printf(FJ_LOG_PREFIX "quitting because effort %d > %d.\n",
+						printf(FJ_LOG_PREFIX "%zu: quitting because effort %ld > %ld.\n", thread_rank,
 							status.effortSinceLastImprovement, maxEffort);
 
 					auto quit = quitNumSol || quitEffort || heuristicFinished;
 					if (quit)
 					{
-						printf(FJ_LOG_PREFIX "effort rate: %g Mops/sec\n", status.totalEffort / time / 1.0e6);
+						printf(FJ_LOG_PREFIX "%zu: effort rate: %g Mops/sec\n", thread_rank, status.totalEffort / time / 1.0e6);
 						for (auto& s : heuristicSolutions)
 						{
-							printIdxOfOneInSolution(s);
+							printIdxOfOneInSolution(s, thread_rank);
 						}
 					}
 					return quit ? CallbackControlFlow::Terminate : CallbackControlFlow::Continue;
 				  });
 			};
-			f();
-//            std::thread(
-//                [verbose, maxTotalSolutions, usePresolved, seed,
-//                 relaxContinuous, decayFactor, allThreadsTerminated, &abcCallback]()
-//                {
-//                    // Prepare data for the non-presolved version.
-//                    {
-//                        std::lock_guard<std::mutex> guard(nonPresolvedProblem_mutex);
-//                        if (gFJData.originalData.numCols == 0)
-//                        {
-//                            gFJData.originalData = getXPRSProblemData(abcCallback);                        }
-//                    }
-//
-//                    // Produce the presolved solution
-////                    if (usePresolved)
-////                    {
-////                        std::lock_guard<std::mutex> guard(presolvedProblem_mutex);
-////                        if (gFJData.presolvedProblemCopy == nullptr)
-////                        {
-////                            XPRScreateprob(&gFJData.presolvedProblemCopy);
-////                            XPRSsetlogfile(gFJData.presolvedProblemCopy, "presolve.log");
-////                            XPRScopyprob(gFJData.presolvedProblemCopy, gFJData.originalProblemCopy, "");
-////                            XPRSsetintcontrol(gFJData.presolvedProblemCopy, XPRS_LPITERLIMIT, 0);
-////
-////                            XPRSmipoptimize(gFJData.presolvedProblemCopy, "");
-////                            gFJData.presolvedData = getXPRSProblemData(gFJData.presolvedProblemCopy);
-////                        }
-////                    }
-//
-//                    ProblemInstance &data = usePresolved ? gFJData.presolvedData : gFJData.originalData;
-//                    FeasibilityJumpSolver solver(seed, verbose, decayFactor);
-//                    bool copyOk = copyDataToHeuristicSolver(solver, data, relaxContinuous);
-//                    if (!copyOk)
-//                        return;
-//
-//                    solver.solve(
-//                        nullptr, [maxTotalSolutions, usePresolved](FJStatus status) -> CallbackControlFlow
-//                        {
-//
-//
-//                            double time = std::chrono::duration_cast<std::chrono::milliseconds>(
-//                                std::chrono::steady_clock::now() - startTime).count() /1000.0;
-//
-//                            // If we received a solution, put it on the queue.
-//                            if (status.solution != nullptr)
-//                            {
-//                                char *solutionObjectiveValueStr = mpz_get_str(NULL, 10, status.solutionObjectiveValue.get_mpz_t());
-//                                printf("FJSOL %g %s\n", time, solutionObjectiveValueStr);
-//                                free(solutionObjectiveValueStr);
-//                                //mapHeuristicSolution(status, usePresolved);
-//                            }
-//
-//                            // If we have enough solutions or spent enough time, quit.
-//                            auto quitNumSol = totalNumSolutionsFound >= maxTotalSolutions;
-//                            if(quitNumSol) printf(FJ_LOG_PREFIX "quitting because number of solutions %zd >= %zd.\n", totalNumSolutionsFound.load(), maxTotalSolutions);
-//                            auto quitEffort = status.effortSinceLastImprovement > maxEffort;
-//                            if(quitEffort) printf(FJ_LOG_PREFIX "quitting because effort %d > %d.\n", status.effortSinceLastImprovement , maxEffort);
-//
-//                            auto quit = quitNumSol || quitEffort || heuristicFinished;
-//                            if (quit)
-//                                printf(FJ_LOG_PREFIX "effort rate: %g Mops/sec\n", status.totalEffort / time / 1.0e6);
-//                            return quit ? CallbackControlFlow::Terminate : CallbackControlFlow::Continue; });
-//                })
-//                .detach();
+            std::thread(f).detach();
 		}
 	}
 
