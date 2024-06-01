@@ -11,14 +11,15 @@
 
 typedef mpz_class IntegerType;
 
-#define PBOINTMAX 2e64 // FIXME: numeric_limits< mpz_class >::max() has bug
-#define PBOINTMIN -2e64
-#else
+#define PBOINTMAX 1L << 62 // FIXME: numeric_limits< mpz_class >::max() has bug, and 1LL will fail
+#define PBOINTMIN -1L << 62
 
-#warning this IntegerType may not be suitable for some input file. Consider using GMP
+#else
+#warning this IntegerType may not be suitable for some input file with int size > 64. Consider using GMP
 typedef long IntegerType;
 
-#define PBOINTMAX numeric_limits< IntegerType >::max()
+#define PBOINTMAX 1L << 62
+#define PBOINTMIN -1L << 62
 
 #endif
 

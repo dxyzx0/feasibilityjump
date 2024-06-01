@@ -330,8 +330,13 @@ void start_feasibility_jump_heuristic(AbcCallback& abcCallback, size_t maxTotalS
 					// If we received a solution, put it on the queue.
 					if (status.solution != nullptr)
 					{
+#ifdef useGMP
 						char* solutionObjectiveValueStr =
 							mpz_get_str(nullptr, 10, status.solutionObjectiveValue.get_mpz_t());
+#else
+						char* solutionObjectiveValueStr = nullptr;
+						asprintf(&solutionObjectiveValueStr, "%ld", status.solutionObjectiveValue);
+#endif
 //
 						printf("(FJSOL) %zu: %g %s\n", thread_rank, time, solutionObjectiveValueStr);
 						free(solutionObjectiveValueStr);

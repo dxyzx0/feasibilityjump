@@ -593,8 +593,13 @@ class FeasibilityJumpSolver
 	{
 		assert(callback);
 		if (verbosity >= 1)
+#ifdef useGMP
 			printf(FJ_LOG_PREFIX "%zu: starting solve. weightUpdateDecay=%s, relaxContinuous=%d, seed=%d \n",
 				thread_rank, weightUpdateDecay.get_str().c_str(), problem.usedRelaxContinuous, seed);
+#else
+			printf(FJ_LOG_PREFIX "%zu: starting solve. weightUpdateDecay=%ld, relaxContinuous=%d, seed=%d \n",
+				thread_rank, weightUpdateDecay, problem.usedRelaxContinuous, seed);
+#endif
 
 		init(initialValues);
 

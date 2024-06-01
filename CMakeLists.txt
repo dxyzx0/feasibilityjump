@@ -3,8 +3,6 @@ project(FeasibilityJump_heauristic)
 
 set(CMAKE_CXX_STANDARD 23)
 
-# add -DuseGMP to compile with GMP
-# add -DuseGMPXX to compile with GMPXX
 add_executable(
         pbo_fj
         pbo_fj.cpp
@@ -17,21 +15,27 @@ add_executable(
         parser/AbcCallback.h
 )
 
-find_library(GMP_LIBRARY NAMES gmp PATHS /usr/local/lib /usr/local/opt/gmp/lib)
-find_library(GMPXX_LIBRARY NAMES gmpxx PATHS /usr/local/lib /usr/local/opt/gmp/lib)
+option(USE_GMP "Use GMP library" OFF)
 
-if (GMP_LIBRARY)
-    message(STATUS "GMP Library found: ${GMP_LIBRARY}")
-else()
-    message(FATAL_ERROR "GMP Library not found")
-endif()
+if (USE_GMP)
+    include_directories(/usr/local/include)
 
-if (GMPXX_LIBRARY)
-    message(STATUS "GMPXX Library found: ${GMPXX_LIBRARY}")
-else()
-    message(FATAL_ERROR "GMPXX Library not found")
-endif()
+    find_library(GMP_LIBRARY NAMES gmp PATHS /usr/local/lib /usr/local/opt/gmp/lib)
+    find_library(GMPXX_LIBRARY NAMES gmpxx PATHS /usr/local/lib /usr/local/opt/gmp/lib)
 
-include_directories(/usr/local/include)
-target_link_libraries(pbo_fj ${GMP_LIBRARY} ${GMPXX_LIBRARY})
-target_compile_definitions(pbo_fj PRIVATE useGMP)
+    if (GMP_LIBRARY)
+        message(STATUS "GMP Library found: ${GMP_LIBRARY}")
+    else()
+        message(FATAL_ERROR "GMP Library not found")
+    endif()
+
+    if (GMPXX_LIBRARY)
+        message(STATUS "GMPXX Library found: ${GMPXX_LIBRARY}")
+    else()
+        message(FATAL_ERROR "GMPXX Library not found")
+    endif()
+    set(LIBS ${LIBS} ${GMP_LIBRARY} ${GMPXX_LIBRARY})
+    target_compile_definitions(pbo_fj PRIVATE useGMP)
+endif ()
+
+target_link_libraries(pbo_fj ${LIBS})

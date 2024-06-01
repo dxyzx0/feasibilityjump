@@ -2,13 +2,11 @@
 // Created by psw on 5/19/24.
 //
 
-#include "DefaultCallback.h"
 #include <iostream>
-#include <fstream>
-#include <iomanip>
 #include <stdexcept>
 #include <vector>
-#include <cassert>
+#include "DefaultCallback.h"
+
 using namespace std;
 
 /**

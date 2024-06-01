@@ -9,7 +9,6 @@
 #include <memory>
 #include <string>
 #include "DefaultCallback.h"
-#include "../type_int.h"
 
 using namespace std;
 

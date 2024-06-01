@@ -6,6 +6,7 @@
 #define PBO_HEURISTICS_PARSER_DEFAULTCALLBACK_H_
 
 #include <vector>
+#include <string>
 #include "../type_int.h"
 
 using std::vector;
