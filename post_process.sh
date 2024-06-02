@@ -8,13 +8,13 @@ if [ -z "$log_date" ]; then
 fi
 
 # generate results.csv and bestSol.csv
-find /scratch/htc/spu/feasibilityjump/logs/"$log_date" -type f -name "*.log" | xargs -n 1 awk -f fj_sol.awk
+find /scratch/htc/spu/feasibilityjump/logs/"$log_date" -type f -name "*.log" -print0 | xargs -0 -n 1 awk -f fj_sol.awk
 
 # post process of results.csv and bestSol.csv
 # remove `\.opb.*\.log` from the first column of results.csv and bestSol.csv by awk
-awk 'BEGIN{FS=OFS=","} {gsub(/\.opb.*\.log/, "", $1); print $0}' results.csv > results.csv.tmp
+perl -pe 'BEGIN{$,=","} $_ = reverse $_; s/gol\..*?bpo\.//; $_ = reverse $_' results.csv > results.csv.tmp
 mv results.csv.tmp results.csv
-awk 'BEGIN{FS=OFS=","} {gsub(/\.opb.*\.log/, "", $1); print $0}' bestSol.csv > bestSol.csv.tmp
+perl -pe 'BEGIN{$,=","} $_ = reverse $_; s/gol\..*?bpo\./bpo./; $_ = reverse $_' bestSol.csv > bestSol.csv.tmp
 mv bestSol.csv.tmp bestSol.csv
 
 # Read BIG-LIN.test and extract basenames without extension
