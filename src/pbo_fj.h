@@ -65,7 +65,7 @@ bool copyDataToHeuristicSolver(FeasibilityJumpSolver& solver, ProblemInstance& d
 void mapHeuristicSolution(FJStatus& status);
 
 void start_feasibility_jump_heuristic(AbcCallback& abcCallback, size_t maxTotalSolutions, bool heuristicOnly, size_t NUM_THREADS,
-	bool relaxContinuous = false, bool exponentialDecay = false, int verbose = 0);
+	bool relaxContinuous = false, bool exponentialDecay = false, double timeout = 3600, int verbose = 0);
 
 int printUsage();
 

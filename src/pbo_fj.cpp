@@ -227,6 +227,32 @@ void mapHeuristicSolution(FJStatus& status)
 	}
 }
 
+void post_process()
+{
+    assert(heuristicSolutions.size() == heuristicSolutionValues.size());
+    // print the best solution
+    IntegerType bestObj = PBOINTMAX;
+    size_t bestIdx = 0;
+    for (size_t i = 0; i < heuristicSolutions.size(); i += 1)
+    {
+        if (heuristicSolutionValues[i] < bestObj)
+        {
+            bestObj = heuristicSolutionValues[i];
+            bestIdx = i;
+        }
+    }
+    if (bestObj == PBOINTMAX)
+    {
+        printf(PBO_LOG_STATUS_PREFIX "UNKNOWN\n");
+    }
+    else
+    {
+        printf(PBO_LOG_STATUS_PREFIX "SATISFIABLE\n");
+        printf(PBO_LOG_OBJ_PREFIX "%ld\n", bestObj);
+        printFullSolution(heuristicSolutions[bestIdx]);
+    }
+}
+
 // Starts background threads running the Feasibility Jump heuristic.
 // Also installs the check-time callback to report any feasible solutions
 // back to the MIP solver.
@@ -236,7 +262,9 @@ void start_feasibility_jump_heuristic(AbcCallback& abcCallback,
 	size_t NUM_THREADS,
 	bool relaxContinuous,
 	bool exponentialDecay,
-	int verbose)
+    double timeout,
+    int verbose
+    )
 {
 	{
 		shared_ptr< Defer > allThreadsTerminated = std::make_shared< Defer >(
@@ -249,7 +277,7 @@ void start_feasibility_jump_heuristic(AbcCallback& abcCallback,
 			int seed = thread_idx;
 			bool usePresolved = thread_idx % 2 == 1;
 			IntegerType decayFactor = (!exponentialDecay) ? 1 : 1;
-			auto f = [verbose, maxTotalSolutions, usePresolved, seed,
+			auto f = [timeout, verbose, maxTotalSolutions, usePresolved, seed,
 				relaxContinuous, decayFactor, allThreadsTerminated, &abcCallback]()
 			{
 			  // Increment the thread rank.
@@ -273,7 +301,7 @@ void start_feasibility_jump_heuristic(AbcCallback& abcCallback,
 			  }
 
 			  solver.solve(
-				  nullptr, [maxTotalSolutions, usePresolved, thread_rank](FJStatus status) -> CallbackControlFlow
+				  nullptr, [maxTotalSolutions, usePresolved, thread_rank, timeout](FJStatus status) -> CallbackControlFlow
 				  {
 
 					double time = std::chrono::duration_cast< std::chrono::milliseconds >(
@@ -303,8 +331,12 @@ void start_feasibility_jump_heuristic(AbcCallback& abcCallback,
 					if (quitEffort)
 						printf(PBO_LOG_COMMENT_PREFIX FJ_LOG_PREFIX "%zu: quitting because effort %ld > %ld.\n", thread_rank,
 							status.effortSinceLastImprovement, maxEffort);
-
-					bool quit = quitNumSol || quitEffort || heuristicFinished;
+                    time = std::chrono::duration_cast< std::chrono::milliseconds >(
+                            std::chrono::steady_clock::now() - startTime).count() / 1000.0;
+                    bool quitTime = time > timeout;
+                    if (quitTime)
+                        printf(PBO_LOG_COMMENT_PREFIX FJ_LOG_PREFIX "%zu: quitting because time %g > %g.\n", thread_rank, time, timeout);
+					bool quit = quitNumSol || quitEffort || quitTime || heuristicFinished;
 					if (quit)
 					{
 						printf(PBO_LOG_COMMENT_PREFIX FJ_LOG_PREFIX "%zu: effort rate: %g Mops/sec\n",
@@ -325,28 +357,7 @@ void start_feasibility_jump_heuristic(AbcCallback& abcCallback,
     printf(PBO_LOG_COMMENT_PREFIX FJ_LOG_PREFIX "all threads exited.\n");
 
     // post-process the solutions
-    assert(heuristicSolutions.size() == heuristicSolutionValues.size());
-    // print the best solution
-    IntegerType bestObj = PBOINTMAX;
-    size_t bestIdx = 0;
-    for (size_t i = 0; i < heuristicSolutions.size(); i += 1)
-    {
-        if (heuristicSolutionValues[i] < bestObj)
-        {
-            bestObj = heuristicSolutionValues[i];
-            bestIdx = i;
-        }
-    }
-    if (bestObj == PBOINTMAX)
-    {
-        printf(PBO_LOG_STATUS_PREFIX "UNKNOWN\n");
-    }
-    else
-    {
-        printf(PBO_LOG_STATUS_PREFIX "SATISFIABLE\n");
-        printf(PBO_LOG_OBJ_PREFIX "%ld\n", bestObj);
-        printFullSolution(heuristicSolutions[bestIdx]);
-    }
+    post_process();
 }
 
 int printUsage()
@@ -357,6 +368,8 @@ int printUsage()
 
 int run_feasibility_jump_heuristic(int argc, char* argv[])
 {
+    startTime = std::chrono::steady_clock::now();
+
 	int verbose = 0;
 	bool heuristicOnly = false;
 	bool relaxContinuous = false;
@@ -414,8 +427,6 @@ int run_feasibility_jump_heuristic(int argc, char* argv[])
 
 	int returnCode = 0;
 
-	startTime = std::chrono::steady_clock::now();
-
 	SimpleParser< AbcCallback >* parser;
 	try
 	{
@@ -435,6 +446,7 @@ int run_feasibility_jump_heuristic(int argc, char* argv[])
 			NUM_THREADS,
 			relaxContinuous,
 			exponentialDecay,
+            timeout,
 			verbose);
 	}
 	catch (exception& e)

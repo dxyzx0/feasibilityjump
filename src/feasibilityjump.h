@@ -14,6 +14,7 @@
 using namespace std;
 
 #define FJ_LOG_PREFIX "(FJ) "
+#define FJ_LOG_SOL_PREFIX "(FJSOL) "
 
 #define PBO_LOG_COMMENT_PREFIX "c "
 #define PBO_LOG_STATUS_PREFIX "s "

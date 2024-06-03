@@ -24,7 +24,7 @@ void printSolution(const Solution& s)
 	{
 		str += to_string(v) + " ";
     }
-    printf(PBO_LOG_SOL_PREFIX "%s\n", str.c_str());
+    printf(PBO_LOG_COMMENT_PREFIX FJ_LOG_SOL_PREFIX "%s\n", str.c_str());
 }
 
 void printIdxOfOneInSolution(const Solution& s, size_t thread_rank)
@@ -36,7 +36,7 @@ void printIdxOfOneInSolution(const Solution& s, size_t thread_rank)
 			str += to_string(i) + " ";
 	}
 	str += "\n";
-	printf(PBO_LOG_SOL_PREFIX FJ_LOG_PREFIX "%s", str.c_str());
+	printf(PBO_LOG_COMMENT_PREFIX FJ_LOG_SOL_PREFIX "%s", str.c_str());
 }
 
 void printSolution(IntegerType* s, size_t n)
@@ -46,7 +46,7 @@ void printSolution(IntegerType* s, size_t n)
 	{
 		str += to_string(s[i]) + " ";
     }
-    printf(PBO_LOG_COMMENT_PREFIX "%s\n", str.c_str());
+    printf(PBO_LOG_COMMENT_PREFIX FJ_LOG_SOL_PREFIX "%s\n", str.c_str());
 }
 
 void printIdxOfOneInSolution(const IntegerType* s, size_t n, size_t thread_rank)
@@ -57,7 +57,7 @@ void printIdxOfOneInSolution(const IntegerType* s, size_t n, size_t thread_rank)
 		if (s[i] == 1)
 			str += to_string(i) + " ";
 	}
-    printf(PBO_LOG_COMMENT_PREFIX FJ_LOG_PREFIX "%zu: solution: %s\n", thread_rank, str.c_str());
+    printf(PBO_LOG_COMMENT_PREFIX FJ_LOG_SOL_PREFIX "%zu: solution: %s\n", thread_rank, str.c_str());
 }
 
 void printVector(const std::vector< IntegerType >& v)
@@ -67,7 +67,7 @@ void printVector(const std::vector< IntegerType >& v)
 	{
 		str += to_string(x) + " ";
     }
-    printf(PBO_LOG_COMMENT_PREFIX "%s\n", str.c_str());
+    printf(PBO_LOG_COMMENT_PREFIX FJ_LOG_PREFIX "%s\n", str.c_str());
 }
 
 void printIdxOfOneInVector(const std::vector< IntegerType >& v)
