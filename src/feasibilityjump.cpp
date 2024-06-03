@@ -4,70 +4,81 @@
 
 #include "feasibilityjump.h"
 
+void printFullSolution(const Solution& s)
+{
+    string str;
+    for (size_t i = 0; i < s.assignment.size(); i++)
+    {
+        if (s.assignment[i] == 1)
+            str += "x" + to_string(i + 1) + " ";
+        else
+            str += "-x" + to_string(i + 1) + " ";
+    }
+    printf(PBO_LOG_SOL_PREFIX "%s\n", str.c_str());
+}
+
 void printSolution(const Solution& s)
 {
-	cout << "solution: ";
+    string str = "solution: ";
 	for (const IntegerType& v : s.assignment)
 	{
-		cout << v << " ";
-	}
-	cout << endl;
+		str += to_string(v) + " ";
+    }
+    printf(PBO_LOG_SOL_PREFIX "%s\n", str.c_str());
 }
 
 void printIdxOfOneInSolution(const Solution& s, size_t thread_rank)
 {
 	string str = "solution: ";
-	for (size_t i = 0; i < s.assignment.size(); i += 1)
+	for (size_t i = 0; i < s.assignment.size(); i++)
 	{
 		if (s.assignment[i] == 1)
 			str += to_string(i) + " ";
 	}
 	str += "\n";
-	printf(FJ_LOG_PREFIX "%s", str.c_str());
+	printf(PBO_LOG_SOL_PREFIX FJ_LOG_PREFIX "%s", str.c_str());
 }
 
 void printSolution(IntegerType* s, size_t n)
 {
-	cout << "solution: ";
-	for (size_t i = 0; i < n; i += 1)
+	string str = "solution: ";
+	for (size_t i = 0; i < n; i++)
 	{
-		cout << s[i] << " ";
-	}
-	cout << endl;
+		str += to_string(s[i]) + " ";
+    }
+    printf(PBO_LOG_COMMENT_PREFIX "%s\n", str.c_str());
 }
 
-void printIdxOfOneInSolution(IntegerType* s, size_t n, size_t thread_rank)
+void printIdxOfOneInSolution(const IntegerType* s, size_t n, size_t thread_rank)
 {
-	string str = "solution: ";
-	for (size_t i = 0; i < n; i += 1)
+	string str;
+	for (size_t i = 0; i < n; i++)
 	{
 		if (s[i] == 1)
 			str += to_string(i) + " ";
 	}
-	str += "\n";
-	printf(FJ_LOG_PREFIX "%zu: %s", thread_rank, str.c_str());
-
+    printf(PBO_LOG_COMMENT_PREFIX FJ_LOG_PREFIX "%zu: solution: %s\n", thread_rank, str.c_str());
 }
 
 void printVector(const std::vector< IntegerType >& v)
 {
-	cout << "vector: ";
+    string str = "vector: ";
 	for (const IntegerType& x : v)
 	{
-		cout << x << " ";
-	}
-	cout << endl;
+		str += to_string(x) + " ";
+    }
+    printf(PBO_LOG_COMMENT_PREFIX "%s\n", str.c_str());
 }
 
 void printIdxOfOneInVector(const std::vector< IntegerType >& v)
 {
-	cout << "vector: ";
-	for (size_t i = 0; i < v.size(); i += 1)
+	string str = "vector: ";
+	for (size_t i = 0; i < v.size(); i++)
 	{
-		if (v[i] == 1)
-			cout << i << " ";
-	}
-	cout << endl;
+        if (v[i] == 1)
+            str += to_string(i) + " ";
+    }
+    printf(PBO_LOG_COMMENT_PREFIX FJ_LOG_PREFIX "%s\n", str.c_str());
 }
 
 // Measures if two Ints are equal within a tolerance of 1.0e-5.

@@ -9,6 +9,7 @@ std::atomic_bool heuristicFinished(false);
 std::chrono::steady_clock::time_point startTime;
 
 std::vector< Solution > heuristicSolutions;
+std::vector< IntegerType > heuristicSolutionValues;
 std::mutex heuristicSolutions_mutex;
 
 std::mutex presolvedProblem_mutex;
@@ -63,7 +64,7 @@ ProblemInstance getProblemData(AbcCallback& abcCallback)
 	}
 
 	data.numNonZeros = abcCallback.getA().size();
-	printf(FJ_LOG_PREFIX "copying %zu x %zu matrix with %zu nonzeros.\n",
+	printf(PBO_LOG_COMMENT_PREFIX FJ_LOG_PREFIX "copying %zu x %zu matrix with %zu nonzeros.\n",
 		data.numCols, data.numRows, data.numNonZeros);
 
 	data.rowStart = std::vector< size_t >(data.numRows + 1);
@@ -90,73 +91,73 @@ ProblemInstance getProblemData(AbcCallback& abcCallback)
 	}
 	data.rowStart[data.numRows] = data.numNonZeros;
 
-	cout << "*****************\n" << endl;
-	cout << "numCols= \n" << data.numCols << endl;
-	cout << "numRows= \n" << data.numRows << endl;
-	cout << "numNonZeros= \n" << data.numNonZeros << endl;
-	cout << " varTypes: " << endl;
-	for (const char& t : data.varTypes)
-	{
-		std::cout << t << " ";
-	}
-	std::cout << std::endl;
-	cout << " lb: " << endl;
-	for (const IntegerType& t : data.lb)
-	{
-		std::cout << t << " ";
-	}
-	std::cout << std::endl;
-	cout << " ub: " << endl;
-	for (const IntegerType& t : data.ub)
-	{
-		std::cout << t << " ";
-	}
-	std::cout << std::endl;
-	cout << " objCoeffs: " << endl;
-	for (const IntegerType& t : data.objCoeffs)
-	{
-		std::cout << t << " ";
-	}
-	std::cout << std::endl;
-	cout << " rowtypes: " << endl;
-	for (const char& t : data.rowtypes)
-	{
-		std::cout << t << " ";
-	}
-	std::cout << std::endl;
-	cout << " rhs:" << endl;
-	for (const IntegerType& t : data.rhs)
-	{
-		std::cout << t << " ";
-	}
-	std::cout << std::endl;
-	cout << " rowStart:" << endl;
-	for (const size_t& t : data.rowStart)
-	{
-		std::cout << t << " ";
-	}
-	std::cout << std::endl;
-	cout << " colIdxs:" << endl;
-	for (const size_t& t : data.colIdxs)
-	{
-		std::cout << t << " ";
-	}
-	std::cout << std::endl;
-	cout << " colCoeffs:" << endl;
-	for (const IntegerType& t : data.colCoeffs)
-	{
-		std::cout << t << " ";
-	}
-	std::cout << std::endl;
-
-	cout << "*****************\n" << endl;
+//	cout << "*****************\n" << endl;
+//	cout << "numCols= \n" << data.numCols << endl;
+//	cout << "numRows= \n" << data.numRows << endl;
+//	cout << "numNonZeros= \n" << data.numNonZeros << endl;
+//	cout << " varTypes: " << endl;
+//	for (const char& t : data.varTypes)
+//	{
+//		std::cout << t << " ";
+//	}
+//	std::cout << std::endl;
+//	cout << " lb: " << endl;
+//	for (const IntegerType& t : data.lb)
+//	{
+//		std::cout << t << " ";
+//	}
+//	std::cout << std::endl;
+//	cout << " ub: " << endl;
+//	for (const IntegerType& t : data.ub)
+//	{
+//		std::cout << t << " ";
+//	}
+//	std::cout << std::endl;
+//	cout << " objCoeffs: " << endl;
+//	for (const IntegerType& t : data.objCoeffs)
+//	{
+//		std::cout << t << " ";
+//	}
+//	std::cout << std::endl;
+//	cout << " rowtypes: " << endl;
+//	for (const char& t : data.rowtypes)
+//	{
+//		std::cout << t << " ";
+//	}
+//	std::cout << std::endl;
+//	cout << " rhs:" << endl;
+//	for (const IntegerType& t : data.rhs)
+//	{
+//		std::cout << t << " ";
+//	}
+//	std::cout << std::endl;
+//	cout << " rowStart:" << endl;
+//	for (const size_t& t : data.rowStart)
+//	{
+//		std::cout << t << " ";
+//	}
+//	std::cout << std::endl;
+//	cout << " colIdxs:" << endl;
+//	for (const size_t& t : data.colIdxs)
+//	{
+//		std::cout << t << " ";
+//	}
+//	std::cout << std::endl;
+//	cout << " colCoeffs:" << endl;
+//	for (const IntegerType& t : data.colCoeffs)
+//	{
+//		std::cout << t << " ";
+//	}
+//	std::cout << std::endl;
+//
+//	cout << "*****************\n" << endl;
 
 	return data;
 }
 
 bool copyDataToHeuristicSolver(FeasibilityJumpSolver& solver, ProblemInstance& data, int relaxContinuous)
 {
-	printf("initializing FJ with %zu vars %zu constraints\n", data.numCols, data.numRows);
+	printf(PBO_LOG_COMMENT_PREFIX FJ_LOG_PREFIX "initializing FJ with %zu vars %zu constraints\n", data.numCols, data.numRows);
 	for (size_t colIdx = 0; colIdx < data.numCols; colIdx += 1)
 	{
 		VarType vartype = VarType::Continuous;
@@ -166,7 +167,7 @@ bool copyDataToHeuristicSolver(FeasibilityJumpSolver& solver, ProblemInstance& d
 		}
 		else
 		{
-			printf(FJ_LOG_PREFIX "unsupported variable type '%c' (%d).\n",
+			printf(PBO_LOG_COMMENT_PREFIX FJ_LOG_PREFIX "unsupported variable type '%c' (%d).\n",
 				data.varTypes[colIdx], data.varTypes[colIdx]);
 			return false;
 		}
@@ -188,7 +189,7 @@ bool copyDataToHeuristicSolver(FeasibilityJumpSolver& solver, ProblemInstance& d
 		}
 		else
 		{
-			printf(FJ_LOG_PREFIX "unsupported constraint type '%c'. Ignoring constraint.\n", data.rowtypes[rowIdx]);
+			printf(PBO_LOG_COMMENT_PREFIX FJ_LOG_PREFIX "unsupported constraint type '%c'. Ignoring constraint.\n", data.rowtypes[rowIdx]);
 			return false;
 		}
 
@@ -209,7 +210,7 @@ void mapHeuristicSolution(FJStatus& status)
 	Solution s;
 	bool conversionOk = false;
 	{
-		printf(FJ_LOG_PREFIX "received a solution from non-presolved instance.\n");
+		printf(PBO_LOG_COMMENT_PREFIX FJ_LOG_PREFIX "received a solution from non-presolved instance.\n");
 		s.assignment = std::vector< IntegerType >(status.solution, status.solution + status.numVars);
 		s.includesContinuous = false;
 		conversionOk = true;
@@ -220,6 +221,7 @@ void mapHeuristicSolution(FJStatus& status)
 		{
 			std::lock_guard< std::mutex > guard(heuristicSolutions_mutex);
 			heuristicSolutions.push_back(s);
+            heuristicSolutionValues.push_back(status.solutionObjectiveValue);
 			totalNumSolutionsFound += 1;
 		}
 	}
@@ -241,7 +243,7 @@ void start_feasibility_jump_heuristic(AbcCallback& abcCallback,
 			[]()
 			{ heuristicFinished = true; });
 
-		std::cout << "Number of threads: " << NUM_THREADS << std::endl;
+        printf(PBO_LOG_COMMENT_PREFIX FJ_LOG_PREFIX "starting FJ with %zu threads.\n", NUM_THREADS);
 		for (size_t thread_idx = 0; thread_idx < NUM_THREADS; thread_idx += 1)
 		{
 			int seed = thread_idx;
@@ -266,7 +268,7 @@ void start_feasibility_jump_heuristic(AbcCallback& abcCallback,
 			  bool copyOk = copyDataToHeuristicSolver(solver, data, relaxContinuous);
 			  if (!copyOk)
 			  {
-				  cout << "error here copyOk!" << endl;
+				  printf(PBO_LOG_COMMENT_PREFIX FJ_LOG_PREFIX "%zu: failed to copy data to FJ solver.\n", thread_rank);
 				  return;
 			  }
 
@@ -287,32 +289,26 @@ void start_feasibility_jump_heuristic(AbcCallback& abcCallback,
 						char* solutionObjectiveValueStr = nullptr;
 						asprintf(&solutionObjectiveValueStr, "%ld", status.solutionObjectiveValue);
 #endif
-//
-						printf("(FJSOL) %zu: %g %s\n", thread_rank, time, solutionObjectiveValueStr);
-						free(solutionObjectiveValueStr);
+                        printf(PBO_LOG_COMMENT_PREFIX "(FJSOL) %zu: %g %s\n", thread_rank, time, solutionObjectiveValueStr);
+                        free(solutionObjectiveValueStr);
 						mapHeuristicSolution(status);
 					}
 
 					// If we have enough solutions or spent enough time, quit.
 					bool quitNumSol = totalNumSolutionsFound >= maxTotalSolutions;
 					if (quitNumSol)
-						printf(FJ_LOG_PREFIX "%zu: quitting because number of solutions %zd >= %zd.\n", thread_rank,
+						printf(PBO_LOG_COMMENT_PREFIX FJ_LOG_PREFIX "%zu: quitting because number of solutions %zd >= %zd.\n", thread_rank,
 							totalNumSolutionsFound.load(), maxTotalSolutions);
 					bool quitEffort = status.effortSinceLastImprovement > maxEffort;
 					if (quitEffort)
-						printf(FJ_LOG_PREFIX "%zu: quitting because effort %ld > %ld.\n", thread_rank,
+						printf(PBO_LOG_COMMENT_PREFIX FJ_LOG_PREFIX "%zu: quitting because effort %ld > %ld.\n", thread_rank,
 							status.effortSinceLastImprovement, maxEffort);
 
 					bool quit = quitNumSol || quitEffort || heuristicFinished;
 					if (quit)
 					{
-						printf(FJ_LOG_PREFIX "%zu: effort rate: %g Mops/sec\n",
-							thread_rank,
-							status.totalEffort / time / 1.0e6);
-						for (Solution& s : heuristicSolutions)
-						{
-							printIdxOfOneInSolution(s, thread_rank);
-						}
+						printf(PBO_LOG_COMMENT_PREFIX FJ_LOG_PREFIX "%zu: effort rate: %g Mops/sec\n",
+							thread_rank, status.totalEffort / time / 1.0e6);
 					}
 					return quit ? CallbackControlFlow::Terminate : CallbackControlFlow::Continue;
 				  });
@@ -321,20 +317,41 @@ void start_feasibility_jump_heuristic(AbcCallback& abcCallback,
 		}
 	}
 
-	if (heuristicOnly)
-	{
-		while (!heuristicFinished)
-		{
-			std::this_thread::sleep_for(std::chrono::milliseconds(50));
-		}
-		printf(FJ_LOG_PREFIX "all threads exited.\n");
-	}
+    // Wait for all threads to finish.
+    while (!heuristicFinished)
+    {
+        std::this_thread::sleep_for(std::chrono::milliseconds(50));
+    }
+    printf(PBO_LOG_COMMENT_PREFIX FJ_LOG_PREFIX "all threads exited.\n");
+
+    // post-process the solutions
+    assert(heuristicSolutions.size() == heuristicSolutionValues.size());
+    // print the best solution
+    IntegerType bestObj = PBOINTMAX;
+    size_t bestIdx = 0;
+    for (size_t i = 0; i < heuristicSolutions.size(); i += 1)
+    {
+        if (heuristicSolutionValues[i] < bestObj)
+        {
+            bestObj = heuristicSolutionValues[i];
+            bestIdx = i;
+        }
+    }
+    if (bestObj == PBOINTMAX)
+    {
+        printf(PBO_LOG_STATUS_PREFIX "UNKNOWN\n");
+    }
+    else
+    {
+        printf(PBO_LOG_STATUS_PREFIX "SATISFIABLE\n");
+        printf(PBO_LOG_OBJ_PREFIX "%ld\n", bestObj);
+        printFullSolution(heuristicSolutions[bestIdx]);
+    }
 }
 
 int printUsage()
 {
-	printf(
-		"Usage: pbo_fj [--timeout|-t TIMEOUT] [--save-solutions|-s OUTDIR] [--verbose|-v] [--heuristic-only|-h] [--exponential-decay|-e] [--relax-continuous|-r] INFILE\n");
+	printf(PBO_LOG_COMMENT_PREFIX "Usage: pbo_fj [--jobs|-j JOBS] [--timeout|-t TIMEOUT] [--save-solutions|-s OUTDIR] [--verbose|-v] [--heuristic-only|-h] [--exponential-decay|-e] [--relax-continuous|-r] INFILE\n");
 	return 1;
 }
 
@@ -404,7 +421,7 @@ int run_feasibility_jump_heuristic(int argc, char* argv[])
 	{
 		const string& filename = inputPath;
 		// assert filename ends with ".opb" or ".pb"
-		cout << "Parsing file: " << filename << endl;
+        printf(PBO_LOG_COMMENT_PREFIX "Parsing file: %s\n", filename.c_str());
 		assert(filename.substr(filename.find_last_of('.') + 1) == "opb" ||
 			filename.substr(filename.find_last_of('.') + 1) == "pb");
 		parser = new SimpleParser< AbcCallback >(filename.c_str());
@@ -422,7 +439,6 @@ int run_feasibility_jump_heuristic(int argc, char* argv[])
 	}
 	catch (exception& e)
 	{
-		cout.flush();
 		cerr << "ERROR: " << e.what() << endl;
 		return -1;
 	}

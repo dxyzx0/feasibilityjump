@@ -15,6 +15,11 @@ using namespace std;
 
 #define FJ_LOG_PREFIX "(FJ) "
 
+#define PBO_LOG_COMMENT_PREFIX "c "
+#define PBO_LOG_STATUS_PREFIX "s "
+#define PBO_LOG_OBJ_PREFIX "o "
+#define PBO_LOG_SOL_PREFIX "v "
+
 const IntegerType violationTolerance = 0;
 const IntegerType equalityTolerance = 0;
 
@@ -24,13 +29,15 @@ struct Solution
 	bool includesContinuous;
 };
 
+void printFullSolution(const Solution& s);
+
 void printSolution(const Solution& s);
 
 void printIdxOfOneInSolution(const Solution& s, size_t thread_rank);
 
 void printSolution(IntegerType* s, size_t n);
 
-void printIdxOfOneInSolution(IntegerType* s, size_t n, size_t thread_rank);
+void printIdxOfOneInSolution(const IntegerType* s, size_t n, size_t thread_rank);
 
 void printVector(const std::vector< IntegerType >& v);
 
@@ -150,7 +157,7 @@ struct Problem
 	std::vector< size_t > violatedConstraints;
 	bool usedRelaxContinuous = false;
 
-	size_t nNonzeros;
+	size_t nNonzeros = 0;
 	IntegerType incumbentObjective = 0;  // FIXME
 
 	size_t addVar(VarType vartype, IntegerType lb, IntegerType ub, IntegerType objCoeff)
@@ -508,7 +515,7 @@ class FeasibilityJumpSolver
 		size_t _thread_rank = 0)
 	{
 		verbosity = _verbosity;
-		weightUpdateDecay = std::move(_weightUpdateDecay);
+		weightUpdateDecay = _weightUpdateDecay;
 		thread_rank = _thread_rank;
 		seed = _seed;
 		rng = std::mt19937(seed);
@@ -527,21 +534,19 @@ class FeasibilityJumpSolver
 		return problem.addConstraint(sense, rhs, numCoeffs, rowVarIdxs, rowCoeffs, relax_continuous);
 	}
 
-	int solve(IntegerType* initialValues, std::function< CallbackControlFlow(FJStatus) > callback)
+	int solve(IntegerType* initialValues, const std::function< CallbackControlFlow(FJStatus) >& callback)
 	{
 		assert(callback);
 		if (verbosity >= 1)
 #ifdef useGMP
-			printf(FJ_LOG_PREFIX "%zu: starting solve. weightUpdateDecay=%s, relaxContinuous=%d, seed=%d \n",
+			printf(PBO_LOG_COMMENT_PREFIX FJ_LOG_PREFIX "%zu: starting solve. weightUpdateDecay=%s, relaxContinuous=%d, seed=%d \n",
 				thread_rank, weightUpdateDecay.get_str().c_str(), problem.usedRelaxContinuous, seed);
 #else
-			printf(FJ_LOG_PREFIX "%zu: starting solve. weightUpdateDecay=%ld, relaxContinuous=%d, seed=%d \n",
+			printf(PBO_LOG_COMMENT_PREFIX FJ_LOG_PREFIX "%zu: starting solve. weightUpdateDecay=%ld, relaxContinuous=%d, seed=%d \n",
 				thread_rank, weightUpdateDecay, problem.usedRelaxContinuous, seed);
 #endif
 
 		init(initialValues);
-
-		cout << "initial assignment." << endl;
 
 		for (size_t step = 0; step < PBOINTMAX; step += 1)
 		{
@@ -551,7 +556,7 @@ class FeasibilityJumpSolver
 			if (step % 1000 == 0)
 			{
 				if (verbosity >= 1)
-					printf(FJ_LOG_PREFIX "%zu: step %zu viol %zd good %zd bumps %zd\n", thread_rank, step,
+					printf(PBO_LOG_COMMENT_PREFIX FJ_LOG_PREFIX "%zu: step %zu viol %zd good %zd bumps %zd\n", thread_rank, step,
 						problem.violatedConstraints.size(), goodVarsSet.size(), nBumps);
 			}
 
@@ -654,7 +659,7 @@ class FeasibilityJumpSolver
 	void updateWeights()
 	{
 		if (verbosity >= 2)
-			printf(FJ_LOG_PREFIX "%zu: Reached a local minimum.\n", thread_rank);
+			printf(PBO_LOG_COMMENT_PREFIX FJ_LOG_PREFIX "%zu: Reached a local minimum.\n", thread_rank);
 		nBumps += 1;
 		bool rescaleAllWeights = false;
 		size_t dt = 0;
@@ -662,7 +667,7 @@ class FeasibilityJumpSolver
 		if (problem.violatedConstraints.empty())
 		{
 			objectiveWeight += weightUpdateIncrement;
-			if (objectiveWeight > 1e20)
+			if (objectiveWeight > (1L << 40))
 				rescaleAllWeights = true;
 
 			dt += problem.vars.size();
@@ -682,7 +687,7 @@ class FeasibilityJumpSolver
 			{
 				Constraint& constraint = problem.constraints[cIdx];
 				constraint.weight += weightUpdateIncrement;
-				if (constraint.weight > 1e20)
+				if (constraint.weight > (1L << 40))
 					rescaleAllWeights = true;
 
 				dt += constraint.coeffs.size();
@@ -814,16 +819,16 @@ class FeasibilityJumpSolver
 		updateGoodMoves(varIdx);
 	}
 
-	bool user_terminate(std::function< CallbackControlFlow(FJStatus) > callback, IntegerType* solution)
+	bool user_terminate(const std::function< CallbackControlFlow(FJStatus) >& callback, IntegerType* solution)
 	{
 		const size_t CALLBACK_EFFORT = 500000;
 		if (solution != nullptr || totalEffort - effortAtLastCallback > CALLBACK_EFFORT)
 		{
 			if (verbosity >= 2)
-				printf(FJ_LOG_PREFIX "%zu: calling user termination.\n", thread_rank);
+				printf(PBO_LOG_COMMENT_PREFIX FJ_LOG_PREFIX "%zu: calling user termination.\n", thread_rank);
 			effortAtLastCallback = totalEffort;
 
-			FJStatus status;
+			FJStatus status{};
 			status.totalEffort = totalEffort;
 			status.effortSinceLastImprovement = totalEffort - effortAtLastImprovement;
 
@@ -831,7 +836,7 @@ class FeasibilityJumpSolver
 			if (solution != nullptr)
 				printIdxOfOneInSolution(solution, problem.vars.size(), thread_rank);
 			else
-				printf(FJ_LOG_PREFIX "%zu: no solution.\n", thread_rank);
+				printf(PBO_LOG_COMMENT_PREFIX FJ_LOG_PREFIX "%zu: no solution.\n", thread_rank);
 			status.numVars = problem.vars.size();
 			status.solutionObjectiveValue = problem.incumbentObjective;
 
@@ -839,7 +844,7 @@ class FeasibilityJumpSolver
 			if (result == CallbackControlFlow::Terminate)
 			{
 				if (verbosity >= 2)
-					printf(FJ_LOG_PREFIX "%zu: quitting.\n", thread_rank);
+					printf(PBO_LOG_COMMENT_PREFIX FJ_LOG_PREFIX "%zu: quitting.\n", thread_rank);
 				return true;
 			}
 		}
