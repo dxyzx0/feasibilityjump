@@ -158,7 +158,7 @@ ProblemInstance getProblemData(AbcCallback& abcCallback)
 bool copyDataToHeuristicSolver(FeasibilityJumpSolver& solver, ProblemInstance& data, int relaxContinuous)
 {
 	printf(PBO_LOG_COMMENT_PREFIX FJ_LOG_PREFIX "initializing FJ with %zu vars %zu constraints\n", data.numCols, data.numRows);
-	for (size_t colIdx = 0; colIdx < data.numCols; colIdx += 1)
+	for (size_t colIdx = 0; colIdx < data.numCols; colIdx++)
 	{
 		VarType vartype = VarType::Continuous;
 		if (data.varTypes[colIdx] == 'B')
@@ -175,7 +175,7 @@ bool copyDataToHeuristicSolver(FeasibilityJumpSolver& solver, ProblemInstance& d
 		solver.addVar(vartype, data.lb[colIdx], data.ub[colIdx], data.objCoeffs[colIdx]);
 	}
 
-	for (size_t rowIdx = 0; rowIdx < data.numRows; rowIdx += 1)
+	for (size_t rowIdx = 0; rowIdx < data.numRows; rowIdx++)
 	{
 		assert(data.rowtypes[rowIdx] == 'G' || data.rowtypes[rowIdx] == 'E');
 		RowType rowtype;
@@ -222,7 +222,7 @@ void mapHeuristicSolution(FJStatus& status)
 			std::lock_guard< std::mutex > guard(heuristicSolutions_mutex);
 			heuristicSolutions.push_back(s);
             heuristicSolutionValues.push_back(status.solutionObjectiveValue);
-			totalNumSolutionsFound += 1;
+			totalNumSolutionsFound++;
 		}
 	}
 }
@@ -233,7 +233,7 @@ void post_process()
     // print the best solution
     IntegerType bestObj = PBOINTMAX;
     size_t bestIdx = 0;
-    for (size_t i = 0; i < heuristicSolutions.size(); i += 1)
+    for (size_t i = 0; i < heuristicSolutions.size(); i++)
     {
         if (heuristicSolutionValues[i] < bestObj)
         {
@@ -272,7 +272,7 @@ void start_feasibility_jump_heuristic(AbcCallback& abcCallback,
 			{ heuristicFinished = true; });
 
         printf(PBO_LOG_COMMENT_PREFIX FJ_LOG_PREFIX "starting FJ with %zu threads.\n", NUM_THREADS);
-		for (size_t thread_idx = 0; thread_idx < NUM_THREADS; thread_idx += 1)
+		for (size_t thread_idx = 0; thread_idx < NUM_THREADS; thread_idx++)
 		{
 			int seed = thread_idx;
 			bool usePresolved = thread_idx % 2 == 1;
@@ -379,7 +379,7 @@ int run_feasibility_jump_heuristic(int argc, char* argv[])
 	size_t NUM_THREADS = 1;
 
 	std::string inputPath;
-	for (int i = 1; i < argc; i += 1)
+	for (int i = 1; i < argc; i++)
 	{
 		std::string argvi(argv[i]);
 		if (argvi == "--save-solutions" || argvi == "-s")
@@ -388,7 +388,7 @@ int run_feasibility_jump_heuristic(int argc, char* argv[])
 				outDir = std::string(argv[i + 1]);
 			else
 				return printUsage();
-			i += 1;
+			i++;
 		}
 		else if (argvi == "--timeout" || argvi == "-t")
 		{
@@ -396,10 +396,10 @@ int run_feasibility_jump_heuristic(int argc, char* argv[])
 				timeout = std::stoi(argv[i + 1]);
 			else
 				return printUsage();
-			i += 1;
+			i++;
 		}
 		else if (argvi == "--verbose" || argvi == "-v")
-			verbose += 1;
+			verbose++;
 		else if (argvi == "--heuristic-only" || argvi == "-h")
 			heuristicOnly = true;
 //        else if (argvi == "--relax-continuous" || argvi == "-r")
@@ -412,7 +412,7 @@ int run_feasibility_jump_heuristic(int argc, char* argv[])
 				NUM_THREADS = std::stoi(argv[i + 1]);
 			else
 				return printUsage();
-			i += 1;
+			i++;
 		}
 		else if (!inputPath.empty())
 			return printUsage();

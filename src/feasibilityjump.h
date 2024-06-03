@@ -191,7 +191,7 @@ struct Problem
 //            }
 
 		std::vector< IdxCoeff > coeffs;
-		for (size_t i = 0; i < numCoeffs; i += 1)
+		for (size_t i = 0; i < numCoeffs; i++)
 		{
 			if (relax_continuous > 0 && vars[rowVarIdxs[i]].vartype == VarType::Continuous)
 			{
@@ -253,18 +253,18 @@ struct Problem
 		// Set the initial values, if given.
 
 		if (initialValues)
-			for (size_t i = 0; i < vars.size(); i += 1)
+			for (size_t i = 0; i < vars.size(); i++)
 				incumbentAssignment[i] = initialValues[i];
 		// std::copy(initialValues, initialValues + vars.size(), incumbentAssignment);
 
 		// Reset the incumbent objective.
 		incumbentObjective = 0;
-		for (size_t i = 0; i < vars.size(); i += 1)
+		for (size_t i = 0; i < vars.size(); i++)
 			incumbentObjective += vars[i].objectiveCoeff * incumbentAssignment[i];
 
 		// Reset the constraint LHSs and the violatedConstraints list.
 		violatedConstraints.clear();
-		for (size_t cIdx = 0; cIdx < constraints.size(); cIdx += 1)
+		for (size_t cIdx = 0; cIdx < constraints.size(); cIdx++)
 		{
 			Constraint& cstr = constraints[cIdx];
 
@@ -348,6 +348,8 @@ struct Problem
 };
 
 void modifyMove(LhsModification mod, Problem& problem, Move& move);
+
+bool check_feasibility(const IntegerType* solution, const Problem& problem);
 
 // Stores current moves and computes updated jump values for
 // the "Jump" move type.
@@ -549,7 +551,7 @@ class FeasibilityJumpSolver
 
 		init(initialValues);
 
-		for (size_t step = 0; step < PBOINTMAX; step += 1)
+		for (size_t step = 0; step < PBOINTMAX; step++)
 		{
 			if (user_terminate(callback, nullptr))
 				break;
@@ -575,6 +577,11 @@ class FeasibilityJumpSolver
 					break;
 			}
 
+			if (!problem.violatedConstraints.empty())
+			{
+				assert(!check_feasibility(problem.incumbentAssignment.data(), problem));
+			}
+
 			if (problem.vars.empty())
 				break;
 
@@ -594,7 +601,7 @@ class FeasibilityJumpSolver
 
 		// Reset the variable scores.
 		goodVarsSet.clear();
-		for (size_t i = 0; i < problem.vars.size(); i += 1)
+		for (size_t i = 0; i < problem.vars.size(); i++)
 			resetMoves(i);
 	}
 
@@ -661,7 +668,7 @@ class FeasibilityJumpSolver
 	{
 		if (verbosity >= 2)
 			printf(PBO_LOG_COMMENT_PREFIX FJ_LOG_PREFIX "%zu: Reached a local minimum.\n", thread_rank);
-		nBumps += 1;
+		nBumps++;
 		bool rescaleAllWeights = false;
 		size_t dt = 0;
 
@@ -672,7 +679,7 @@ class FeasibilityJumpSolver
 				rescaleAllWeights = true;
 
 			dt += problem.vars.size();
-			for (size_t varIdx = 0; varIdx < problem.vars.size(); varIdx += 1)
+			for (size_t varIdx = 0; varIdx < problem.vars.size(); varIdx++)
 				forEachMove(
 					varIdx, [&](Move& move)
 					{
@@ -720,7 +727,7 @@ class FeasibilityJumpSolver
 				c.weight = 1;
 			dt += problem.constraints.size();
 
-			for (size_t i = 0; i < problem.vars.size(); i += 1)
+			for (size_t i = 0; i < problem.vars.size(); i++)
 				resetMoves(i);
 		}
 
@@ -835,7 +842,12 @@ class FeasibilityJumpSolver
 
 			status.solution = solution;
 			if (solution != nullptr)
+			{
+				//check if the solution is feasible
+				assert(check_feasibility(solution, problem));
+				printf(PBO_LOG_COMMENT_PREFIX FJ_LOG_PREFIX "%zu: solution is feasible.\n", thread_rank);
 				printIdxOfOneInSolution(solution, problem.vars.size(), thread_rank);
+			}
 			else
 				printf(PBO_LOG_COMMENT_PREFIX FJ_LOG_PREFIX "%zu: no solution.\n", thread_rank);
 			status.numVars = problem.vars.size();

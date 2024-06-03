@@ -98,3 +98,21 @@ void modifyMove(LhsModification mod, Problem& problem, Move& move)
 	IntegerType newScoreTerm = c.weight * (c.score(newModifiedLhs) - c.score(mod.newLhs));
 	move.score += newScoreTerm - oldScoreTerm;
 }
+
+bool check_feasibility(const IntegerType* solution, const Problem& problem){
+	// Check if the solution is feasible.
+	for (const Constraint & c : problem.constraints)
+	{
+		IntegerType lhs = 0;
+		for (const IdxCoeff& cell : c.coeffs)
+			lhs += cell.coeff * solution[cell.idx];
+		if (c.sense == RowType::Equal && !eq(lhs, c.rhs))
+			return false;
+		else if (c.sense == RowType::Gte && lhs < c.rhs)
+			return false;
+		else
+			throw std::runtime_error("Unsupported constraint type.");
+	}
+	return true;
+}
+
