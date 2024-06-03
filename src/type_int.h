@@ -15,7 +15,7 @@ typedef mpz_class IntegerType;
 #define PBOINTMIN -1L << 62
 
 #else
-#warning this IntegerType may not be suitable for some input file with int size > 64. Consider using GMP
+//#warning this IntegerType may not be suitable for some input file with int size > 64. Consider using GMP
 typedef long IntegerType;
 
 #define PBOINTMAX 1L << 62

@@ -5,34 +5,34 @@ set(CMAKE_CXX_STANDARD 23)
 set(CMAKE_C_STANDARD 99)
 
 set(FJ_SOURCES
-        pbo_fj.cpp
-        feasibilityjump.cpp
-        parser/DefaultCallback.cpp
-        parser/AbcCallback.cpp
+        src/pbo_fj.cpp
+        src/feasibilityjump.cpp
+        src/parser/DefaultCallback.cpp
+        src/parser/AbcCallback.cpp
 )
 
 # Create the C++ library
 add_library(
-        pbo_fj_lib SHARED
+        pbofj SHARED
         ${FJ_SOURCES}
 )
 
 # Create the C++ executable
 add_executable(
-        pbo_fj
+        pbofj_cpp
         main.cpp
 )
 # Link the C++ library to the C executable
-target_link_libraries(pbo_fj pbo_fj_lib)
+target_link_libraries(pbofj_cpp pbofj)
 
 
 # Create the C executable
 add_executable(
-        pbo_fj_c
+        pbofj_c
         main.c
 )
 # Link the C++ library to the C executable
-target_link_libraries(pbo_fj_c pbo_fj_lib)
+target_link_libraries(pbofj_c pbofj)
 
 
 option(USE_GMP "Use GMP library" OFF)
@@ -55,7 +55,7 @@ if (USE_GMP)
         message(FATAL_ERROR "GMPXX Library not found")
     endif ()
     set(LIBS ${LIBS} ${GMP_LIBRARY} ${GMPXX_LIBRARY})
-    target_compile_definitions(pbo_fj PRIVATE useGMP)
+    target_compile_definitions(pbofj PRIVATE useGMP)
 endif ()
 
-target_link_libraries(pbo_fj_lib ${LIBS})
+target_link_libraries(pbofj ${LIBS})

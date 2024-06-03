@@ -16,7 +16,7 @@
 
 #include "feasibilityjump.h"
 #include "parser/AbcCallback.h"
-#include "pbo_fj_pub.h"
+#include "../pbo_fj_pub.h"
 
 struct ProblemInstance
 {
