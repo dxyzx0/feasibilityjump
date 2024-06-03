@@ -8,7 +8,7 @@ if [ -z "$log_date" ]; then
 fi
 
 # generate results.csv and bestSol.csv
-find /scratch/htc/spu/feasibilityjump/logs/"$log_date" -type f -name "*.log" -print0 | xargs -0 -n 1 awk -f fj_sol.awk
+find ../logs/"$log_date" -type f -name "*.log" -print0 | xargs -0 -n 1 awk -f fj_sol.awk
 
 # post process of results.csv and bestSol.csv
 # remove `\.opb.*\.log` from the first column of results.csv and bestSol.csv by awk
