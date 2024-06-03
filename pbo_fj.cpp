@@ -1,4 +1,5 @@
 #include "pbo_fj.h"
+#include "parser/SimpleParser.h"
 
 std::atomic_size_t global_thread_rank(0);
 std::atomic_size_t totalNumSolutionsFound(0);

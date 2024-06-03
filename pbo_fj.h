@@ -16,7 +16,7 @@
 
 #include "feasibilityjump.h"
 #include "parser/AbcCallback.h"
-#include "parser/SimpleParser.h"
+#include "pbo_fj_pub.h"
 
 struct ProblemInstance
 {
@@ -68,8 +68,6 @@ void start_feasibility_jump_heuristic(AbcCallback& abcCallback, size_t maxTotalS
 	bool relaxContinuous = false, bool exponentialDecay = false, int verbose = 0);
 
 int printUsage();
-
-int run_feasibility_jump_heuristic(int argc, char* argv[]);
 
 #define CHECK_RETURN(call)                                  \
     do                                                      \
