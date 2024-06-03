@@ -193,27 +193,7 @@ struct Problem
 		std::vector< IdxCoeff > coeffs;
 		for (size_t i = 0; i < numCoeffs; i++)
 		{
-			if (relax_continuous > 0 && vars[rowVarIdxs[i]].vartype == VarType::Continuous)
-			{
-				if (sense == RowType::Lte)
-				{
-					if (rowCoeffs[i] >= 0)
-						rhs -= rowCoeffs[i] * vars[rowVarIdxs[i]].lb;
-					else
-						rhs -= rowCoeffs[i] * vars[rowVarIdxs[i]].ub;
-				}
-				else if (sense == RowType::Gte)
-				{
-					if (rowCoeffs[i] >= 0)
-						rhs -= rowCoeffs[i] * vars[rowVarIdxs[i]].ub;
-					else
-						rhs -= rowCoeffs[i] * vars[rowVarIdxs[i]].lb;
-				}
-				else
-					return PBOINTMIN;
-			}
-			else
-				coeffs.emplace_back(rowVarIdxs[i], rowCoeffs[i]);
+			coeffs.emplace_back(rowVarIdxs[i], rowCoeffs[i]);
 		}
 
 		if (coeffs.empty())
@@ -226,7 +206,7 @@ struct Problem
 			else
 				ok = eq(0, rhs);
 
-			return ok ? PBOINTMAX : PBOINTMIN;
+			return 1;  // FIXME: constraint can't be satisfied
 		}
 
 		size_t newConstraintIdx = constraints.size();
@@ -616,7 +596,7 @@ class FeasibilityJumpSolver
 			totalEffort += sampleSize;
 
 			IntegerType bestScore = PBOINTMIN;
-			size_t bestVar = PBOINTMAX;
+			size_t bestVar = 0;
 			for (size_t i = 0; i < sampleSize; i++)
 			{
 				size_t setidx = rng() % goodVarsSet.size();
@@ -646,7 +626,7 @@ class FeasibilityJumpSolver
 				return constraint.coeffs[rng() % constraint.coeffs.size()].idx;
 
 			IntegerType bestScore = PBOINTMIN;
-			size_t bestVarIdx = PBOINTMAX;
+			size_t bestVarIdx = 0;
 
 			for (IdxCoeff& cell : constraint.coeffs)
 			{

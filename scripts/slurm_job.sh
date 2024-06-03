@@ -2,7 +2,7 @@
 
 set -x  # Enable printing of commands before execution
 
-root_dir=/scratch/htc/spu/feasibilityjump
+root_dir=/scratch/htc/spu/github/feasibilityjump
 # get the current date and time
 now=$(date +"%Y%m%d_%H%M%S")
 # Read each line from the file

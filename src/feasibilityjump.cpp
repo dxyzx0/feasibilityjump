@@ -4,6 +4,13 @@
 
 #include "feasibilityjump.h"
 
+#ifdef useGMP
+string to_string(const IntegerType& x)
+{
+	return x.get_str();
+}
+#endif
+
 void printFullSolution(const Solution& s)
 {
     string str;

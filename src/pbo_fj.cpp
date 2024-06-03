@@ -91,73 +91,73 @@ ProblemInstance getProblemData(AbcCallback& abcCallback)
 	}
 	data.rowStart[data.numRows] = data.numNonZeros;
 
-	printf(PBO_LOG_COMMENT_PREFIX "*****************\n");
-	printf(PBO_LOG_COMMENT_PREFIX "numCols= %zu\n", data.numCols);
-	printf(PBO_LOG_COMMENT_PREFIX "numRows= %zu\n", data.numRows);
-	printf(PBO_LOG_COMMENT_PREFIX "numNonZeros= %zu\n", data.numNonZeros);
-	string str = "varTypes: ";
-	for (const char& t : data.varTypes)
-	{
-		str += to_string(t) + " ";
-	}
-	printf(PBO_LOG_COMMENT_PREFIX "varTypes= %s\n", str.c_str());
+	// printf(PBO_LOG_COMMENT_PREFIX "*****************\n");
+	// printf(PBO_LOG_COMMENT_PREFIX "numCols= %zu\n", data.numCols);
+	// printf(PBO_LOG_COMMENT_PREFIX "numRows= %zu\n", data.numRows);
+	// printf(PBO_LOG_COMMENT_PREFIX "numNonZeros= %zu\n", data.numNonZeros);
+	// string str = "varTypes: ";
+	// for (const char& t : data.varTypes)
+	// {
+	// 	str += to_string(t) + " ";
+	// }
+	// printf(PBO_LOG_COMMENT_PREFIX "varTypes= %s\n", str.c_str());
 
-	str = "lb: ";
-	for (const IntegerType& t : data.lb)
-	{
-		str += to_string(t) + " ";
-	}
-	printf(PBO_LOG_COMMENT_PREFIX "lb= %s\n", str.c_str());
+	// str = "lb: ";
+	// for (const IntegerType& t : data.lb)
+	// {
+	// 	str += to_string(t) + " ";
+	// }
+	// printf(PBO_LOG_COMMENT_PREFIX "lb= %s\n", str.c_str());
 
-	str = "ub: ";
-	for (const IntegerType& t : data.ub)
-	{
-		str += to_string(t) + " ";
-	}
-	printf(PBO_LOG_COMMENT_PREFIX "ub= %s\n", str.c_str());
+	// str = "ub: ";
+	// for (const IntegerType& t : data.ub)
+	// {
+	// 	str += to_string(t) + " ";
+	// }
+	// printf(PBO_LOG_COMMENT_PREFIX "ub= %s\n", str.c_str());
 
-	str = "objCoeffs: ";
-	for (const IntegerType& t : data.objCoeffs)
-	{
-		str += to_string(t) + " ";
-	}
-	printf(PBO_LOG_COMMENT_PREFIX "objCoeffs= %s\n", str.c_str());
+	// str = "objCoeffs: ";
+	// for (const IntegerType& t : data.objCoeffs)
+	// {
+	// 	str += to_string(t) + " ";
+	// }
+	// printf(PBO_LOG_COMMENT_PREFIX "objCoeffs= %s\n", str.c_str());
 
-	str = "rowtypes: ";
-	for (const char& t : data.rowtypes)
-	{
-		str += to_string(t) + " ";
-	}
-	printf(PBO_LOG_COMMENT_PREFIX "rowtypes= %s\n", str.c_str());
+	// str = "rowtypes: ";
+	// for (const char& t : data.rowtypes)
+	// {
+	// 	str += to_string(t) + " ";
+	// }
+	// printf(PBO_LOG_COMMENT_PREFIX "rowtypes= %s\n", str.c_str());
 
-	str = "rhs: ";
-	for (const IntegerType& t : data.rhs)
-	{
-		str += to_string(t) + " ";
-	}
-	printf(PBO_LOG_COMMENT_PREFIX "rhs= %s\n", str.c_str());
+	// str = "rhs: ";
+	// for (const IntegerType& t : data.rhs)
+	// {
+	// 	str += to_string(t) + " ";
+	// }
+	// printf(PBO_LOG_COMMENT_PREFIX "rhs= %s\n", str.c_str());
 
-	str = "rowStart: ";
-	for (const size_t& t : data.rowStart)
-	{
-		str += to_string(t) + " ";
-	}
-	printf(PBO_LOG_COMMENT_PREFIX "rowStart= %s\n", str.c_str());
+	// str = "rowStart: ";
+	// for (const size_t& t : data.rowStart)
+	// {
+	// 	str += to_string(t) + " ";
+	// }
+	// printf(PBO_LOG_COMMENT_PREFIX "rowStart= %s\n", str.c_str());
 
-	str = "colIdxs: ";
-	for (const size_t& t : data.colIdxs)
-	{
-		str += to_string(t) + " ";
-	}
-	printf(PBO_LOG_COMMENT_PREFIX "colIdxs= %s\n", str.c_str());
+	// str = "colIdxs: ";
+	// for (const size_t& t : data.colIdxs)
+	// {
+	// 	str += to_string(t) + " ";
+	// }
+	// printf(PBO_LOG_COMMENT_PREFIX "colIdxs= %s\n", str.c_str());
 
-	str = "colCoeffs: ";
-	for (const IntegerType& t : data.colCoeffs)
-	{
-		str += to_string(t) + " ";
-	}
-	printf(PBO_LOG_COMMENT_PREFIX "colCoeffs= %s\n", str.c_str());
-	printf(PBO_LOG_COMMENT_PREFIX "*****************\n");
+	// str = "colCoeffs: ";
+	// for (const IntegerType& t : data.colCoeffs)
+	// {
+	// 	str += to_string(t) + " ";
+	// }
+	// printf(PBO_LOG_COMMENT_PREFIX "colCoeffs= %s\n", str.c_str());
+	// printf(PBO_LOG_COMMENT_PREFIX "*****************\n");
 
 	return data;
 }

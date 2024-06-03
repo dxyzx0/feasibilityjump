@@ -5,12 +5,12 @@ BEGIN {
     nSol = 0
 }
 
-$1 == "(FJSOL)" {
+$2 == "(FJSOL)" {
     nSol++
     # print prev
     # print $0
-    if (!min || $4 < min) {
-        min = $4
+    if (!min || $5 < min) {
+        min = $5
         min_line = $0
         min_line_prev = prev
     }
@@ -38,5 +38,5 @@ END {
     #     print "filename,nSol,objBest,minTimeBest" > "results.csv"
     # }
     split(min_line, bestSol, " ")
-    print basename, nSol, bestSol[4], bestSol[3] >> "results.csv"
+    print basename, nSol, bestSol[5], bestSol[4] >> "results.csv"
 }
