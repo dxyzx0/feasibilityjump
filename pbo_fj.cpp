@@ -1,20 +1,4 @@
-#include <cstdio>
-#include <string>
-#include <chrono>
-#include <vector>
-#include <cassert>
-#include <mutex>
-#include <thread>
-#include <functional>
-#include <atomic>
-#include <iostream>
-#include "parser/AbcCallback.h"
-#include "parser/SimpleParser.h"
-#include "feasibilityjump.h"
-#include "type.h"
-
-using namespace std;
-size_t NUM_THREADS = 1;
+#include "pbo_fj.h"
 
 std::atomic_size_t global_thread_rank(0);
 std::atomic_size_t totalNumSolutionsFound(0);
@@ -29,35 +13,12 @@ std::mutex heuristicSolutions_mutex;
 std::mutex presolvedProblem_mutex;
 std::mutex nonPresolvedProblem_mutex;
 
-struct ProblemInstance
-{
-	size_t numCols{};
-	std::vector< char > varTypes;
-	std::vector< IntegerType > lb;
-	std::vector< IntegerType > ub;
-	std::vector< IntegerType > objCoeffs;
-
-	size_t numRows{};
-	size_t numNonZeros{};
-	std::vector< char > rowtypes;
-	std::vector< IntegerType > rhs;
-	std::vector< size_t > rowStart;
-	std::vector< size_t > colIdxs;
-	std::vector< IntegerType > colCoeffs;
-	std::vector< tuple< size_t, string > > rowRelOp;
-};
-
-struct FJData
-{
-	std::vector< int > originalIntegerCols;
-	ProblemInstance originalData;
-	ProblemInstance presolvedData;
-};
-
 FJData gFJData;
 
 std::string inputFilename;
 std::string outDir;
+
+const size_t maxEffort = 99999999999L;
 
 ProblemInstance getProblemData(AbcCallback& abcCallback)
 {
@@ -241,21 +202,6 @@ bool copyDataToHeuristicSolver(FeasibilityJumpSolver& solver, ProblemInstance& d
 	return true;
 }
 
-// An object containing a function to be executed when the object is destructed.
-struct Defer
-{
-	std::function< void(void) > func;
-
-	Defer(std::function< void(void) > pFunc) : func(pFunc)
-	{
-	};
-
-	~Defer()
-	{
-		func();
-	}
-};
-
 void mapHeuristicSolution(FJStatus& status)
 {
 
@@ -278,13 +224,16 @@ void mapHeuristicSolution(FJStatus& status)
 	}
 }
 
-const size_t maxEffort = 99999999999L;
-
 // Starts background threads running the Feasibility Jump heuristic.
 // Also installs the check-time callback to report any feasible solutions
 // back to the MIP solver.
-void start_feasibility_jump_heuristic(AbcCallback& abcCallback, size_t maxTotalSolutions, bool heuristicOnly,
-	bool relaxContinuous = false, bool exponentialDecay = false, int verbose = 0)
+void start_feasibility_jump_heuristic(AbcCallback& abcCallback,
+	size_t maxTotalSolutions,
+	bool heuristicOnly,
+	size_t NUM_THREADS,
+	bool relaxContinuous,
+	bool exponentialDecay,
+	int verbose)
 {
 	{
 		shared_ptr< Defer > allThreadsTerminated = std::make_shared< Defer >(
@@ -381,19 +330,6 @@ void start_feasibility_jump_heuristic(AbcCallback& abcCallback, size_t maxTotalS
 	}
 }
 
-#define CHECK_RETURN(call)                                  \
-    do                                                      \
-    {                                                       \
-        int result_ = call;                                 \
-        if (result_ != 0)                                   \
-        {                                                   \
-            fprintf(stderr, "Line %d: %s failed with %d\n", \
-                    __LINE__, #call, result_);              \
-            returnCode = result_;                           \
-            goto cleanup;                                   \
-        }                                                   \
-    } while (0)
-
 int printUsage()
 {
 	printf(
@@ -401,7 +337,7 @@ int printUsage()
 	return 1;
 }
 
-int main(int argc, char* argv[])
+int run_feasibility_jump_heuristic(int argc, char* argv[])
 {
 	int verbose = 0;
 	bool heuristicOnly = false;
@@ -409,6 +345,7 @@ int main(int argc, char* argv[])
 	bool exponentialDecay = false;
 	int timeout = INT32_MAX / 2;
 	size_t maxTotalSolutions = 5;
+	size_t NUM_THREADS = 1;
 
 	std::string inputPath;
 	for (int i = 1; i < argc; i += 1)
@@ -477,6 +414,7 @@ int main(int argc, char* argv[])
 		start_feasibility_jump_heuristic(parser->cb,
 			maxTotalSolutions,
 			heuristicOnly,
+			NUM_THREADS,
 			relaxContinuous,
 			exponentialDecay,
 			verbose);
