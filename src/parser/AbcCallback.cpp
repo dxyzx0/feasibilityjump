@@ -44,8 +44,8 @@ void AbcCallback::endConstraint()
 		iConsIneq++;
 	}
 
-	cout << "RelOp: " << iRelOp << endl;
-	cout << "b: " << get< 1 >(b.back()) << endl;
+//	cout << "RelOp: " << iRelOp << endl;
+//	cout << "b: " << get< 1 >(b.back()) << endl;
 
 	tmp_trip.clear();
 	iCons++;

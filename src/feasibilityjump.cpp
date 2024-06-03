@@ -108,9 +108,9 @@ bool check_feasibility(const IntegerType* solution, const Problem& problem){
 			lhs += cell.coeff * solution[cell.idx];
 		if (c.sense == RowType::Equal && !eq(lhs, c.rhs))
 			return false;
-		else if (c.sense == RowType::Gte && lhs < c.rhs)
+		if (c.sense == RowType::Gte && lhs < c.rhs)
 			return false;
-		else
+		if (c.sense == RowType::Lte)
 			throw std::runtime_error("Unsupported constraint type.");
 	}
 	return true;

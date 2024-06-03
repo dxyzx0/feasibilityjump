@@ -844,7 +844,10 @@ class FeasibilityJumpSolver
 			if (solution != nullptr)
 			{
 				//check if the solution is feasible
-				assert(check_feasibility(solution, problem));
+				if (!check_feasibility(solution, problem))
+				{
+					throw std::runtime_error("Solution is not feasible.");
+				}
 				printf(PBO_LOG_COMMENT_PREFIX FJ_LOG_PREFIX "%zu: solution is feasible.\n", thread_rank);
 				printIdxOfOneInSolution(solution, problem.vars.size(), thread_rank);
 			}
