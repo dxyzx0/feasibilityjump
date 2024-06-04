@@ -4,6 +4,10 @@ project(FeasibilityJump_heuristic)
 set(CMAKE_CXX_STANDARD 23)
 set(CMAKE_C_STANDARD 99)
 
+if(CMAKE_CXX_COMPILER_ID MATCHES "Clang|GNU")
+    add_compile_options(-Wall -Wextra -Wpedantic)
+endif()
+
 set(FJ_SOURCES
         src/fj_pbo.cpp
         src/fj_solver.cpp

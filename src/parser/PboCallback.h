@@ -20,10 +20,10 @@ class PboCallback : public DefaultCallback
 	vector< tuple< size_t, IntegerType > > b;
 	vector< tuple< size_t, IntegerType > > b_eq, b_ineq;
 	vector< tuple< size_t, IntegerType > > c;
-	size_t nVar;
-	size_t nCons;
-	size_t iCons;
-	size_t iConsEq, iConsIneq;
+	size_t nVar{};
+	size_t nCons{};
+	size_t iCons{};
+	size_t iConsEq{}, iConsIneq{};
 	string iRelOp;
 	vector< tuple< size_t, IntegerType > > tmp_trip;
  public:

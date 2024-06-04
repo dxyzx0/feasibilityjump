@@ -73,17 +73,17 @@ enum CallbackControlFlow
 
 struct FJStatus
 {
-	size_t totalEffort;
-	size_t effortSinceLastImprovement;
-	size_t numVars;
-	IntegerType solutionObjectiveValue;
+	size_t totalEffort{};
+	size_t effortSinceLastImprovement{};
+	size_t numVars{};
+	IntegerType solutionObjectiveValue{};
 	IntegerType* solution;
 };
 
 struct IdxCoeff
 {
-	size_t idx;
-	IntegerType coeff;
+	size_t idx{};
+	IntegerType coeff{};
 
 	IdxCoeff(size_t _idx, IntegerType _coeff) : idx(_idx), coeff(_coeff)
 	{
@@ -92,22 +92,22 @@ struct IdxCoeff
 
 struct Var
 {
-	VarType vartype;
-	IntegerType lb;
-	IntegerType ub;
-	IntegerType objectiveCoeff;
+	VarType vartype{};
+	IntegerType lb{};
+	IntegerType ub{};
+	IntegerType objectiveCoeff{};
 	std::vector< IdxCoeff > coeffs;
 };
 
 struct Constraint
 {
-	RowType sense;
-	IntegerType rhs;
+	RowType sense{};
+	IntegerType rhs{};
 	std::vector< IdxCoeff > coeffs;
-	IntegerType weight;
-	IntegerType incumbentLhs;
-	size_t violatedIdx;
-	IntegerType zero = 0;
+	IntegerType weight{};
+	IntegerType incumbentLhs{};
+	size_t violatedIdx{};
+	IntegerType zero{};
 
 	// Computes the constraint's contribution to the feasibility score:
 	// If the constraint is satisfied by the given LHS value, returns 0.
@@ -126,8 +126,8 @@ struct Constraint
 // A potential new value for a variable, including its score.
 struct Move
 {
-	IntegerType value;
-	IntegerType score;
+	IntegerType value{};
+	IntegerType score{};
 
 	static Move undef()
 	{
@@ -143,11 +143,11 @@ struct Move
 // update the score of a `Move` to reflect the LHS modification.
 struct LhsModification
 {
-	size_t varIdx;
-	size_t constraintIdx;
-	IntegerType coeff;
-	IntegerType oldLhs;
-	IntegerType newLhs;
+	size_t varIdx{};
+	size_t constraintIdx{};
+	IntegerType coeff{};
+	IntegerType oldLhs{};
+	IntegerType newLhs{};
 };
 
 // Stores the MIP problem, an incumbent assignment, and the set of constraints
@@ -159,10 +159,10 @@ struct Problem
 	std::vector< Constraint > constraints;
 	std::vector< IntegerType > incumbentAssignment;
 	std::vector< size_t > violatedConstraints;
-	bool usedRelaxContinuous = false;
+	bool usedRelaxContinuous{};
 
-	size_t nNonzeros = 0;
-	IntegerType incumbentObjective = 0;
+	size_t nNonzeros{};
+	IntegerType incumbentObjective{};
 
 	size_t addVar(VarType vartype, IntegerType lb, IntegerType ub, IntegerType objCoeff)
 	{
@@ -457,14 +457,14 @@ class FeasibilityJumpSolver
 	size_t effortAtLastImprovement = 0;
 	size_t totalEffort = 0;
 
-	IntegerType weightUpdateDecay;
+	IntegerType weightUpdateDecay = 1;
 	IntegerType weightUpdateIncrement = 1;
 
-	size_t nBumps;
+	size_t nBumps = 0;
 
-	int seed;
+	int seed = 0;
 
-	size_t thread_rank;
+	size_t thread_rank = 0;
 
 	// The probability of choosing a random positive-score variable.
 	const double randomVarProbability = 0.001;

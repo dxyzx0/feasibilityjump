@@ -34,7 +34,7 @@ void printSolution(const Solution& s)
 	printf(PBO_LOG_COMMENT_PREFIX FJ_LOG_SOL_PREFIX "%s\n", str.c_str());
 }
 
-void printIdxOfOneInSolution(const Solution& s, size_t thread_rank)
+void printIdxOfOneInSolution(const Solution& s)
 {
 	string str = "solution: ";
 	for (size_t i = 0; i < s.assignment.size(); i++)

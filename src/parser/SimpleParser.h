@@ -45,7 +45,7 @@ class ProductStore
 	};
 
 	vector< ProductNode > root; // root of the n-ary tree
-	int nextSymbol; // next available variable
+	int nextSymbol{}; // next available variable
 
 	/**
 	 * define an order on ProductNode based on the literal (used to
@@ -168,17 +168,17 @@ template< typename Callback >
 class SimpleParser
 {
  public:
-	Callback cb;
+	Callback cb{};
 
  private:
 	ifstream in; // the stream we're reading from
-	int nbVars, nbConstr; // MetaData: #Variables and #Constraints in file.
+	int nbVars{}, nbConstr{}; // MetaData: #Variables and #Constraints in file.
 
-	int nbProduct, sizeProduct; // MetaData for non linear format
-	int nEqual = 0; // MetaData for number of equal constraints
-	int intSize = 0;
+	int nbProduct{}, sizeProduct{}; // MetaData for non linear format
+	int nEqual{}; // MetaData for number of equal constraints
+	int intSize{};
 	ProductStore< Callback > store;
-	bool autoLinearize; // should the parser linearize constraints ?
+	bool autoLinearize{}; // should the parser linearize constraints ?
 
 	/**
 	 * get the next character from the stream
@@ -562,13 +562,6 @@ class SimpleParser
 
 		if (!in.good())
 			throw runtime_error("error opening input file");
-
-		autoLinearize = false;
-
-		nbVars = 0;
-		nbConstr = 0;
-		nbProduct = 0;
-		sizeProduct = 0;
 	}
 
 	~SimpleParser()
