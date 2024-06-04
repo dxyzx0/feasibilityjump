@@ -24,6 +24,8 @@ using namespace std;
 const IntegerType violationTolerance = 0;
 const IntegerType equalityTolerance = 0;
 
+const size_t idxDummy = std::numeric_limits<size_t>::max();
+
 struct Solution
 {
 	std::vector< IntegerType > assignment;
@@ -115,10 +117,8 @@ struct Constraint
 		if (sense == RowType::Equal)
 			return lhs > rhs ? rhs - lhs : lhs - rhs;
 		else if (sense == RowType::Lte)
-//            return -(std::max(0, lhs - rhs));
 			return -(lhs > rhs ? lhs - rhs : zero);
 		else
-//            return -(std::max(0., rhs - lhs));
 			return -(rhs > lhs ? rhs - lhs : zero);
 	}
 };
@@ -205,8 +205,8 @@ struct Problem
 		nNonzeros += coeffs.size();
 		Constraint newConstraint;
 		newConstraint.coeffs = coeffs;
-		newConstraint.incumbentLhs = 0;  // FIXME
-		newConstraint.violatedIdx = -1;
+		newConstraint.incumbentLhs = 0;
+		newConstraint.violatedIdx = idxDummy;
 		newConstraint.rhs = rhs;
 		newConstraint.sense = sense;
 		newConstraint.weight = 1;
@@ -248,7 +248,7 @@ struct Problem
 				violatedConstraints.push_back(cIdx);
 			}
 			else
-				cstr.violatedIdx = -1;
+				cstr.violatedIdx = idxDummy;
 		}
 	}
 
@@ -275,13 +275,13 @@ struct Problem
 			IntegerType newCost = constraints[cstrCoeff.idx].score(newLhs);
 
 			// Add/remove from the violatedConstraints list.
-			if (newCost < -violationTolerance && constraints[cstrCoeff.idx].violatedIdx == -1)
+			if (newCost < -violationTolerance && constraints[cstrCoeff.idx].violatedIdx == idxDummy)
 			{
 				// Became violated.
 				constraints[cstrCoeff.idx].violatedIdx = violatedConstraints.size();
 				violatedConstraints.push_back(cstrCoeff.idx);
 			}
-			if (newCost >= -violationTolerance && constraints[cstrCoeff.idx].violatedIdx != -1)
+			if (newCost >= -violationTolerance && constraints[cstrCoeff.idx].violatedIdx != idxDummy)
 			{
 				// Became satisfied.
 				size_t lastViolatedIdx = violatedConstraints.size() - 1;
@@ -289,7 +289,7 @@ struct Problem
 				size_t thisViolatedIdx = constraints[cstrCoeff.idx].violatedIdx;
 				std::swap(violatedConstraints[thisViolatedIdx], violatedConstraints[lastViolatedIdx]);
 				constraints[lastConstraintIdx].violatedIdx = thisViolatedIdx;
-				constraints[cstrCoeff.idx].violatedIdx = -1;
+				constraints[cstrCoeff.idx].violatedIdx = idxDummy;
 				violatedConstraints.pop_back();
 			}
 
@@ -494,7 +494,7 @@ class FeasibilityJumpSolver
 
 	size_t addVar(VarType vartype, IntegerType lb, IntegerType ub, IntegerType objCoeff)
 	{
-		goodVarsSetIdx.push_back(-1);
+		goodVarsSetIdx.push_back(idxDummy);
 		return problem.addVar(vartype, lb, ub, objCoeff);
 	}
 
@@ -730,8 +730,8 @@ class FeasibilityJumpSolver
 		totalEffort += problem.setValue(
 			varIdx, newValue, [&](LhsModification mod)
 			{
-			  forEachMove(mod.varIdx, [&](Move& m)
-			  { modifyMove(mod, problem, m); });
+			  forEachMove(mod.varIdx, [&](Move& _m)
+			  { modifyMove(mod, problem, _m); });
 			  updateGoodMoves(mod.varIdx);
 			});
 
@@ -741,13 +741,13 @@ class FeasibilityJumpSolver
 	void updateGoodMoves(size_t varIdx)
 	{
 		bool anyGoodMoves = bestMove(varIdx).score > 0;
-		if (anyGoodMoves && goodVarsSetIdx[varIdx] == -1)
+		if (anyGoodMoves && goodVarsSetIdx[varIdx] == idxDummy)
 		{
 			// Became good, add to good set.
 			goodVarsSetIdx[varIdx] = goodVarsSet.size();
 			goodVarsSet.push_back(varIdx);
 		}
-		else if (!anyGoodMoves && goodVarsSetIdx[varIdx] != -1)
+		else if (!anyGoodMoves && goodVarsSetIdx[varIdx] != idxDummy)
 		{
 			// Became bad, remove from good set.
 			size_t lastSetIdx = goodVarsSet.size() - 1;
@@ -755,7 +755,7 @@ class FeasibilityJumpSolver
 			size_t thisSetIdx = goodVarsSetIdx[varIdx];
 			std::swap(goodVarsSet[thisSetIdx], goodVarsSet[lastSetIdx]);
 			goodVarsSetIdx[lastVarIdx] = thisSetIdx;
-			goodVarsSetIdx[varIdx] = -1;
+			goodVarsSetIdx[varIdx] = idxDummy;
 			goodVarsSet.pop_back();
 		}
 	}

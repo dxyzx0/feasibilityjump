@@ -41,7 +41,7 @@ int main(int argc, char* argv[])
 			cout << "usage: SimpleParser <filename>" << endl;
 		else
 		{
-			SimpleParser< AbcCallback > parser(argv[1]);
+			SimpleParser< PboCallback > parser(argv[1]);
 
 			parser.setAutoLinearize(true);
 			parser.parse();

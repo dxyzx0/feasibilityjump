@@ -33,7 +33,7 @@ class ProductStore
 		// literals found from the root up to this node
 		vector< ProductNode >* next; // list of next literals in a product
 
-		explicit ProductNode(int l)
+		ProductNode(int l)
 		{
 			lit = l;
 			productId = 0;

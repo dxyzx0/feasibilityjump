@@ -70,10 +70,10 @@ std::string outDir;
 
 const size_t maxEffort = std::numeric_limits< size_t >::max();
 
-ProblemInstance getProblemData(PboCallback& abcCallback)
+ProblemInstance getProblemData(PboCallback& pboCb)
 {
 	ProblemInstance data;
-	data.numCols = abcCallback.getNVar();
+	data.numCols = pboCb.getNVar();
 
 	data.varTypes = std::vector< char >(data.numCols);
 	std::fill(data.varTypes.begin(), data.varTypes.end(), 'B');
@@ -83,17 +83,17 @@ ProblemInstance getProblemData(PboCallback& abcCallback)
 
 	data.objCoeffs = std::vector< IntegerType >(data.numCols);
 
-	for (const auto& i : abcCallback.getC())
+	for (const auto& i : pboCb.getC())
 	{
 		size_t idx = std::get< 0 >(i);
 		IntegerType val = std::get< 1 >(i);
 		data.objCoeffs[idx] = val;
 	}
 
-	data.numRows = abcCallback.getNCons();
+	data.numRows = pboCb.getNCons();
 
 	data.rowtypes = std::vector< char >(data.numRows);
-	data.rowRelOp = abcCallback.getRelOp();
+	data.rowRelOp = pboCb.getRelOp();
 	for (size_t i = 0; i < data.numRows; i++)
 	{
 		assert(i == std::get< 0 >(data.rowRelOp[i]));
@@ -107,11 +107,11 @@ ProblemInstance getProblemData(PboCallback& abcCallback)
 	data.rhs = std::vector< IntegerType >(data.numRows);
 	for (size_t i = 0; i < data.numRows; i++)
 	{
-		assert(i == std::get< 0 >(abcCallback.getB()[i]));
-		data.rhs[i] = std::get< 1 >(abcCallback.getB()[i]);
+		assert(i == std::get< 0 >(pboCb.getB()[i]));
+		data.rhs[i] = std::get< 1 >(pboCb.getB()[i]);
 	}
 
-	data.numNonZeros = abcCallback.getA().size();
+	data.numNonZeros = pboCb.getA().size();
 	printf(PBO_LOG_COMMENT_PREFIX FJ_LOG_PREFIX "copying %zu x %zu matrix with %zu nonzeros.\n",
 		data.numCols, data.numRows, data.numNonZeros);
 
@@ -120,12 +120,11 @@ ProblemInstance getProblemData(PboCallback& abcCallback)
 	data.colCoeffs = std::vector< IntegerType >(data.numNonZeros);
 	data.rowStart[0] = 0;
 
-	// add assert to make sure abcCallback.getA() is sorted by row
-
+	// add assert to make sure PboCallback.getA() is sorted by row
 
 	size_t i = 0;
 	size_t row = 0;
-	for (const auto& t : abcCallback.getA())
+	for (const auto& t : pboCb.getA())
 	{
 		data.colIdxs[i] = get< 1 >(t);
 		data.colCoeffs[i] = get< 2 >(t);
@@ -305,7 +304,7 @@ void postProcess()
 // Starts background threads running the Feasibility Jump heuristic.
 // Also installs the check-time callback to report any feasible solutions
 // back to the MIP solver.
-void startFeasibilityJumpHeuristic(PboCallback& abcCallback,
+void startFeasibilityJumpHeuristic(PboCallback& pboCb,
 	size_t maxTotalSolutions,
 	size_t NUM_THREADS,
 	double timeout,
@@ -323,7 +322,7 @@ void startFeasibilityJumpHeuristic(PboCallback& abcCallback,
 			int seed = thread_idx;
 			IntegerType decayFactor = 1;
 			auto f = [timeout, verbose, maxTotalSolutions, seed,
-				decayFactor, allThreadsTerminated, &abcCallback]()
+				decayFactor, allThreadsTerminated, &pboCb]()
 			{
 			  // Increment the thread rank.
 			  size_t thread_rank = global_thread_rank++;
@@ -332,7 +331,7 @@ void startFeasibilityJumpHeuristic(PboCallback& abcCallback,
 				  std::lock_guard< std::mutex > guard(nonPresolvedProblem_mutex);
 				  if (gFJData.originalData.numCols == 0)
 				  {
-					  gFJData.originalData = getProblemData(abcCallback);
+					  gFJData.originalData = getProblemData(pboCb);
 				  }
 			  }
 
