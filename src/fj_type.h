@@ -5,8 +5,6 @@
 #ifndef PBO_HEURISTICS__TYPE_H_
 #define PBO_HEURISTICS__TYPE_H_
 
-#include "type_int.h"
-#include "type_result.h"
-#include "type_stage.h"
+#include "fj_type_int.h"
 
 #endif //PBO_HEURISTICS__TYPE_H_

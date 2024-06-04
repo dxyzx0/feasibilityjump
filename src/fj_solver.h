@@ -9,7 +9,7 @@
 #include <cassert>
 #include <algorithm>
 #include <iostream>
-#include "type.h"
+#include "fj_type.h"
 
 using namespace std;
 
@@ -27,8 +27,11 @@ const IntegerType equalityTolerance = 0;
 struct Solution
 {
 	std::vector< IntegerType > assignment;
-	bool includesContinuous;
 };
+
+#ifdef useGMP
+string to_string(const IntegerType& x);
+#endif
 
 void printFullSolution(const Solution& s);
 
@@ -174,22 +177,8 @@ struct Problem
 		return idx;
 	}
 
-	size_t addConstraint(RowType sense, IntegerType rhs, size_t numCoeffs, size_t* rowVarIdxs, IntegerType* rowCoeffs,
-		int relax_continuous)
+	size_t addConstraint(RowType sense, IntegerType rhs, size_t numCoeffs, size_t* rowVarIdxs, IntegerType* rowCoeffs)
 	{
-		if (relax_continuous)
-			usedRelaxContinuous = true;
-
-		// If we are relaxing continuous variables, an equality needs to be split into Gte and Lte.
-		assert(relax_continuous == 0);
-//        if (relax_continuous > 0 && sense == RowType::Equal)
-//            if (std::any_of(rowVarIdxs, rowVarIdxs + numCoeffs,
-//                            [&](size_t varIdx) { return vars[varIdx].vartype == VarType::Continuous; })) {
-//                addConstraint(RowType::Gte, rhs, numCoeffs, rowVarIdxs, rowCoeffs, relax_continuous);
-//                addConstraint(RowType::Lte, rhs, numCoeffs, rowVarIdxs, rowCoeffs, relax_continuous);
-//                return INT_MAX;
-//            }
-
 		std::vector< IdxCoeff > coeffs;
 		for (size_t i = 0; i < numCoeffs; i++)
 		{
@@ -329,7 +318,7 @@ struct Problem
 
 void modifyMove(LhsModification mod, Problem& problem, Move& move);
 
-bool check_feasibility(const IntegerType* solution, const Problem& problem);
+bool checkSol(const IntegerType* solution, const Problem& problem);
 
 // Stores current moves and computes updated jump values for
 // the "Jump" move type.
@@ -511,10 +500,9 @@ class FeasibilityJumpSolver
 		return problem.addVar(vartype, lb, ub, objCoeff);
 	}
 
-	size_t addConstraint(RowType sense, IntegerType rhs, size_t numCoeffs, size_t* rowVarIdxs, IntegerType* rowCoeffs,
-		int relax_continuous)
+	size_t addConstraint(RowType sense, IntegerType rhs, size_t numCoeffs, size_t* rowVarIdxs, IntegerType* rowCoeffs)
 	{
-		return problem.addConstraint(sense, rhs, numCoeffs, rowVarIdxs, rowCoeffs, relax_continuous);
+		return problem.addConstraint(sense, rhs, numCoeffs, rowVarIdxs, rowCoeffs);
 	}
 
 	int solve(IntegerType* initialValues, const std::function< CallbackControlFlow(FJStatus) >& callback)
@@ -533,14 +521,18 @@ class FeasibilityJumpSolver
 
 		for (size_t step = 0; step < PBOINTMAX; step++)
 		{
-			if (user_terminate(callback, nullptr))
+			if (userTerminate(callback, nullptr))
 				break;
 
-			if (step % 1000 == 0)
+			if (step % 100000 == 0)
 			{
 				if (verbosity >= 1)
-					printf(PBO_LOG_COMMENT_PREFIX FJ_LOG_PREFIX "%zu: step %zu viol %zd good %zd bumps %zd\n", thread_rank, step,
-						problem.violatedConstraints.size(), goodVarsSet.size(), nBumps);
+					printf(PBO_LOG_COMMENT_PREFIX FJ_LOG_PREFIX "%zu: step %zu viol %zd good %zd bumps %zd\n",
+						thread_rank,
+						step,
+						problem.violatedConstraints.size(),
+						goodVarsSet.size(),
+						nBumps);
 			}
 
 			if (problem.violatedConstraints.size() < bestViolationScore)
@@ -553,13 +545,13 @@ class FeasibilityJumpSolver
 			{
 				effortAtLastImprovement = totalEffort;
 				bestObjective = problem.incumbentObjective;
-				if (user_terminate(callback, problem.incumbentAssignment.data()))
+				if (userTerminate(callback, problem.incumbentAssignment.data()))
 					break;
 			}
 
 			if (!problem.violatedConstraints.empty())
 			{
-				assert(!check_feasibility(problem.incumbentAssignment.data(), problem));
+				assert(!checkSol(problem.incumbentAssignment.data(), problem));
 			}
 
 			if (problem.vars.empty())
@@ -807,7 +799,7 @@ class FeasibilityJumpSolver
 		updateGoodMoves(varIdx);
 	}
 
-	bool user_terminate(const std::function< CallbackControlFlow(FJStatus) >& callback, IntegerType* solution)
+	bool userTerminate(const std::function< CallbackControlFlow(FJStatus) >& callback, IntegerType* solution)
 	{
 		const size_t CALLBACK_EFFORT = 500000;
 		if (solution != nullptr || totalEffort - effortAtLastCallback > CALLBACK_EFFORT)
@@ -824,15 +816,15 @@ class FeasibilityJumpSolver
 			if (solution != nullptr)
 			{
 				//check if the solution is feasible
-				if (!check_feasibility(solution, problem))
+				if (!checkSol(solution, problem))
 				{
 					throw std::runtime_error("Solution is not feasible.");
 				}
 				printf(PBO_LOG_COMMENT_PREFIX FJ_LOG_PREFIX "%zu: solution is feasible.\n", thread_rank);
 				printIdxOfOneInSolution(solution, problem.vars.size(), thread_rank);
 			}
-			else
-				printf(PBO_LOG_COMMENT_PREFIX FJ_LOG_PREFIX "%zu: no solution.\n", thread_rank);
+//			else
+//				printf(PBO_LOG_COMMENT_PREFIX FJ_LOG_PREFIX "%zu: no solution.\n", thread_rank);
 			status.numVars = problem.vars.size();
 			status.solutionObjectiveValue = problem.incumbentObjective;
 

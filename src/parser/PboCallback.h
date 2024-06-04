@@ -12,7 +12,7 @@
 
 using namespace std;
 
-class AbcCallback : public DefaultCallback
+class PboCallback : public DefaultCallback
 {
  private:
 	vector< tuple< size_t, size_t, IntegerType > > A;

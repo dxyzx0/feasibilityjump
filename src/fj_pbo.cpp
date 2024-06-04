@@ -1,10 +1,61 @@
-#include "pbo_fj.h"
+#include <cstdio>
+#include <vector>
+#include <atomic>
+#include <chrono>
+#include <mutex>
+#include <tuple>
+#include <string>
+#include <thread>
+
+#include "parser/PboCallback.h"
 #include "parser/SimpleParser.h"
+#include "fj_solver.h"
+#include "fj_pbo.h"
+
+struct ProblemInstance
+{
+	size_t numCols{};
+	std::vector< char > varTypes;
+	std::vector< IntegerType > lb;
+	std::vector< IntegerType > ub;
+	std::vector< IntegerType > objCoeffs;
+
+	size_t numRows{};
+	size_t numNonZeros{};
+	std::vector< char > rowtypes;
+	std::vector< IntegerType > rhs;
+	std::vector< size_t > rowStart;
+	std::vector< size_t > colIdxs;
+	std::vector< IntegerType > colCoeffs;
+	std::vector< std::tuple< size_t, std::string > > rowRelOp;
+};
+
+struct FJData
+{
+	std::vector< int > originalIntegerCols;
+	ProblemInstance originalData;
+	ProblemInstance presolvedData;
+};
+
+// An object containing a function to be executed when the object is destructed.
+struct Defer
+{
+	std::function< void(void) > func;
+
+	Defer(std::function< void(void) > pFunc) : func(pFunc)
+	{
+	};
+
+	~Defer()
+	{
+		func();
+	}
+};
+
+FJData gFJData;
 
 std::atomic_size_t global_thread_rank(0);
 std::atomic_size_t totalNumSolutionsFound(0);
-std::atomic_size_t totalNumSolutionsAdded(0);
-std::atomic_bool presolveFinished(false);
 std::atomic_bool heuristicFinished(false);
 std::chrono::steady_clock::time_point startTime;
 
@@ -12,17 +63,14 @@ std::vector< Solution > heuristicSolutions;
 std::vector< IntegerType > heuristicSolutionValues;
 std::mutex heuristicSolutions_mutex;
 
-std::mutex presolvedProblem_mutex;
 std::mutex nonPresolvedProblem_mutex;
-
-FJData gFJData;
 
 std::string inputFilename;
 std::string outDir;
 
-const size_t maxEffort = 99999999999L;
+const size_t maxEffort = std::numeric_limits< size_t >::max();
 
-ProblemInstance getProblemData(AbcCallback& abcCallback)
+ProblemInstance getProblemData(PboCallback& abcCallback)
 {
 	ProblemInstance data;
 	data.numCols = abcCallback.getNVar();
@@ -162,9 +210,11 @@ ProblemInstance getProblemData(AbcCallback& abcCallback)
 	return data;
 }
 
-bool copyDataToHeuristicSolver(FeasibilityJumpSolver& solver, ProblemInstance& data, int relaxContinuous)
+bool copyDataToHeuristicSolver(FeasibilityJumpSolver& solver, ProblemInstance& data)
 {
-	printf(PBO_LOG_COMMENT_PREFIX FJ_LOG_PREFIX "initializing FJ with %zu vars %zu constraints\n", data.numCols, data.numRows);
+	printf(PBO_LOG_COMMENT_PREFIX FJ_LOG_PREFIX "initializing FJ with %zu vars %zu constraints\n",
+		data.numCols,
+		data.numRows);
 	for (size_t colIdx = 0; colIdx < data.numCols; colIdx++)
 	{
 		VarType vartype = VarType::Continuous;
@@ -204,8 +254,7 @@ bool copyDataToHeuristicSolver(FeasibilityJumpSolver& solver, ProblemInstance& d
 			data.rhs[rowIdx],
 			data.rowStart[rowIdx + 1] - data.rowStart[rowIdx],
 			&data.colIdxs[data.rowStart[rowIdx]],
-			&data.colCoeffs[data.rowStart[rowIdx]],
-			relaxContinuous);
+			&data.colCoeffs[data.rowStart[rowIdx]]);
 	}
 
 	return true;
@@ -215,77 +264,66 @@ void mapHeuristicSolution(FJStatus& status)
 {
 
 	Solution s;
-	bool conversionOk = false;
 	{
 		printf(PBO_LOG_COMMENT_PREFIX FJ_LOG_PREFIX "received a solution from non-presolved instance.\n");
 		s.assignment = std::vector< IntegerType >(status.solution, status.solution + status.numVars);
-		s.includesContinuous = false;
-		conversionOk = true;
 	}
-
-	if (conversionOk)
 	{
-		{
-			std::lock_guard< std::mutex > guard(heuristicSolutions_mutex);
-			heuristicSolutions.push_back(s);
-            heuristicSolutionValues.push_back(status.solutionObjectiveValue);
-			totalNumSolutionsFound++;
-		}
+		std::lock_guard< std::mutex > guard(heuristicSolutions_mutex);
+		heuristicSolutions.push_back(s);
+		heuristicSolutionValues.push_back(status.solutionObjectiveValue);
+		totalNumSolutionsFound++;
 	}
 }
 
-void post_process()
+void postProcess()
 {
-    assert(heuristicSolutions.size() == heuristicSolutionValues.size());
-    // print the best solution
-    IntegerType bestObj = PBOINTMAX;
-    size_t bestIdx = 0;
-    for (size_t i = 0; i < heuristicSolutions.size(); i++)
-    {
-        if (heuristicSolutionValues[i] < bestObj)
-        {
-            bestObj = heuristicSolutionValues[i];
-            bestIdx = i;
-        }
-    }
-    if (bestObj == PBOINTMAX)
-    {
-        printf(PBO_LOG_STATUS_PREFIX "UNKNOWN\n");
-    }
-    else
-    {
-        printf(PBO_LOG_STATUS_PREFIX "SATISFIABLE\n");
-        printf(PBO_LOG_OBJ_PREFIX "%ld\n", bestObj);
-        printFullSolution(heuristicSolutions[bestIdx]);
-    }
+	assert(heuristicSolutions.size() == heuristicSolutionValues.size());
+	// print the best solution
+	IntegerType bestObj = PBOINTMAX;
+	size_t bestIdx = 0;
+	for (size_t i = 0; i < heuristicSolutions.size(); i++)
+	{
+		if (heuristicSolutionValues[i] < bestObj)
+		{
+			bestObj = heuristicSolutionValues[i];
+			bestIdx = i;
+		}
+	}
+	if (bestObj == PBOINTMAX)
+	{
+		printf(PBO_LOG_STATUS_PREFIX "UNKNOWN\n");
+	}
+	else
+	{
+		printf(PBO_LOG_STATUS_PREFIX "SATISFIABLE\n");
+		printf(PBO_LOG_OBJ_PREFIX "%s\n", to_string(bestObj).c_str());
+		printFullSolution(heuristicSolutions[bestIdx]);
+	}
 }
 
 // Starts background threads running the Feasibility Jump heuristic.
 // Also installs the check-time callback to report any feasible solutions
 // back to the MIP solver.
-void start_feasibility_jump_heuristic(AbcCallback& abcCallback,
+void startFeasibilityJumpHeuristic(PboCallback& abcCallback,
 	size_t maxTotalSolutions,
-	bool heuristicOnly,
 	size_t NUM_THREADS,
-	bool relaxContinuous,
-	bool exponentialDecay,
-    double timeout,
-    int verbose
-    )
+	double timeout,
+	int verbose
+)
 {
 	{
 		shared_ptr< Defer > allThreadsTerminated = std::make_shared< Defer >(
 			[]()
 			{ heuristicFinished = true; });
 
-        printf(PBO_LOG_COMMENT_PREFIX FJ_LOG_PREFIX "starting FJ with %zu threads.\n", NUM_THREADS);
+		printf(PBO_LOG_COMMENT_PREFIX FJ_LOG_PREFIX "starting FJ with %zu threads.\n", NUM_THREADS);
 		for (size_t thread_idx = 0; thread_idx < NUM_THREADS; thread_idx++)
 		{
 			int seed = thread_idx;
-			bool usePresolved = thread_idx % 2 == 1;
-			IntegerType decayFactor = (!exponentialDecay) ? 1 : 1;
-			auto f = [timeout, verbose, maxTotalSolutions, usePresolved, seed,
-				relaxContinuous, decayFactor, allThreadsTerminated, &abcCallback]()
+			IntegerType decayFactor = 1;
+			auto f = [timeout, verbose, maxTotalSolutions, seed,
+				decayFactor, allThreadsTerminated, &abcCallback]()
 			{
 			  // Increment the thread rank.
 			  size_t thread_rank = global_thread_rank++;
@@ -300,7 +338,7 @@ void start_feasibility_jump_heuristic(AbcCallback& abcCallback,
 
 			  ProblemInstance& data = gFJData.originalData;
 			  FeasibilityJumpSolver solver(seed, verbose, decayFactor, thread_rank);
-			  bool copyOk = copyDataToHeuristicSolver(solver, data, relaxContinuous);
+			  bool copyOk = copyDataToHeuristicSolver(solver, data);
 			  if (!copyOk)
 			  {
 				  printf(PBO_LOG_COMMENT_PREFIX FJ_LOG_PREFIX "%zu: failed to copy data to FJ solver.\n", thread_rank);
@@ -308,7 +346,7 @@ void start_feasibility_jump_heuristic(AbcCallback& abcCallback,
 			  }
 
 			  solver.solve(
-				  nullptr, [maxTotalSolutions, usePresolved, thread_rank, timeout](FJStatus status) -> CallbackControlFlow
+				  nullptr, [maxTotalSolutions, thread_rank, timeout](FJStatus status) -> CallbackControlFlow
 				  {
 
 					double time = std::chrono::duration_cast< std::chrono::milliseconds >(
@@ -317,32 +355,35 @@ void start_feasibility_jump_heuristic(AbcCallback& abcCallback,
 					// If we received a solution, put it on the queue.
 					if (status.solution != nullptr)
 					{
-#ifdef useGMP
-						char* solutionObjectiveValueStr =
-							mpz_get_str(nullptr, 10, status.solutionObjectiveValue.get_mpz_t());
-#else
-						char* solutionObjectiveValueStr = nullptr;
-						asprintf(&solutionObjectiveValueStr, "%ld", status.solutionObjectiveValue);
-#endif
-                        printf(PBO_LOG_COMMENT_PREFIX "(FJSOL) %zu: %g %s\n", thread_rank, time, solutionObjectiveValueStr);
-                        free(solutionObjectiveValueStr);
+						string solutionObjectiveValueStr = to_string(status.solutionObjectiveValue);
+						printf(PBO_LOG_COMMENT_PREFIX FJ_LOG_SOL_PREFIX "%zu: time=%g obj=%s\n",
+							thread_rank,
+							time,
+							solutionObjectiveValueStr.c_str());
 						mapHeuristicSolution(status);
 					}
 
 					// If we have enough solutions or spent enough time, quit.
 					bool quitNumSol = totalNumSolutionsFound >= maxTotalSolutions;
 					if (quitNumSol)
-						printf(PBO_LOG_COMMENT_PREFIX FJ_LOG_PREFIX "%zu: quitting because number of solutions %zd >= %zd.\n", thread_rank,
-							totalNumSolutionsFound.load(), maxTotalSolutions);
+						printf(PBO_LOG_COMMENT_PREFIX FJ_LOG_PREFIX "%zu: quitting because number of solutions %zd >= %zd.\n",
+							thread_rank,
+							totalNumSolutionsFound.load(),
+							maxTotalSolutions);
 					bool quitEffort = status.effortSinceLastImprovement > maxEffort;
 					if (quitEffort)
-						printf(PBO_LOG_COMMENT_PREFIX FJ_LOG_PREFIX "%zu: quitting because effort %ld > %ld.\n", thread_rank,
-							status.effortSinceLastImprovement, maxEffort);
-                    time = std::chrono::duration_cast< std::chrono::milliseconds >(
-                            std::chrono::steady_clock::now() - startTime).count() / 1000.0;
-                    bool quitTime = time > timeout;
-                    if (quitTime)
-                        printf(PBO_LOG_COMMENT_PREFIX FJ_LOG_PREFIX "%zu: quitting because time %g > %g.\n", thread_rank, time, timeout);
+						printf(PBO_LOG_COMMENT_PREFIX FJ_LOG_PREFIX "%zu: quitting because effort %ld > %ld.\n",
+							thread_rank,
+							status.effortSinceLastImprovement,
+							maxEffort);
+					time = std::chrono::duration_cast< std::chrono::milliseconds >(
+						std::chrono::steady_clock::now() - startTime).count() / 1000.0;
+					bool quitTime = time > timeout;
+					if (quitTime)
+						printf(PBO_LOG_COMMENT_PREFIX FJ_LOG_PREFIX "%zu: quitting because time %g > %g.\n",
+							thread_rank,
+							time,
+							timeout);
 					bool quit = quitNumSol || quitEffort || quitTime || heuristicFinished;
 					if (quit)
 					{
@@ -356,31 +397,28 @@ void start_feasibility_jump_heuristic(AbcCallback& abcCallback,
 		}
 	}
 
-    // Wait for all threads to finish.
-    while (!heuristicFinished)
-    {
-        std::this_thread::sleep_for(std::chrono::milliseconds(50));
-    }
-    printf(PBO_LOG_COMMENT_PREFIX FJ_LOG_PREFIX "all threads exited.\n");
+	// Wait for all threads to finish.
+	while (!heuristicFinished)
+	{
+		std::this_thread::sleep_for(std::chrono::milliseconds(50));
+	}
+	printf(PBO_LOG_COMMENT_PREFIX FJ_LOG_PREFIX "all threads exited.\n");
 
-    // post-process the solutions
-    post_process();
+	// post-process the solutions
+	postProcess();
 }
 
 int printUsage()
 {
-	printf(PBO_LOG_COMMENT_PREFIX "Usage: pbo_fj [--jobs|-j JOBS] [--timeout|-t TIMEOUT] [--save-solutions|-s OUTDIR] [--verbose|-v] [--heuristic-only|-h] [--exponential-decay|-e] [--relax-continuous|-r] INFILE\n");
+	printf(PBO_LOG_COMMENT_PREFIX "Usage: pbo_fj [--jobs|-j JOBS] [--timeout|-t TIMEOUT] [--save-solutions|-s OUTDIR] [--verbose|-v] INFILE\n");
 	return 1;
 }
 
-int run_feasibility_jump_heuristic(int argc, char* argv[])
+int runFeasibilityJumpHeuristic(int argc, char* argv[])
 {
-    startTime = std::chrono::steady_clock::now();
+	startTime = std::chrono::steady_clock::now();
 
 	int verbose = 0;
-	bool heuristicOnly = false;
-	bool relaxContinuous = false;
-	bool exponentialDecay = false;
 	int timeout = INT32_MAX / 2;
 	size_t maxTotalSolutions = 5;
 	size_t NUM_THREADS = 1;
@@ -407,12 +445,6 @@ int run_feasibility_jump_heuristic(int argc, char* argv[])
 		}
 		else if (argvi == "--verbose" || argvi == "-v")
 			verbose++;
-		else if (argvi == "--heuristic-only" || argvi == "-h")
-			heuristicOnly = true;
-//        else if (argvi == "--relax-continuous" || argvi == "-r")
-//            relaxContinuous = true;
-//        else if (argvi == "--exponential-decay" || argvi == "-e")
-//            exponentialDecay = true;
 		else if (argvi == "--jobs" || argvi == "-j")
 		{
 			if (i + 1 < argc)
@@ -434,26 +466,23 @@ int run_feasibility_jump_heuristic(int argc, char* argv[])
 
 	int returnCode = 0;
 
-	SimpleParser< AbcCallback >* parser;
+	SimpleParser< PboCallback >* parser;
 	try
 	{
 		const string& filename = inputPath;
 		// assert filename ends with ".opb" or ".pb"
-        printf(PBO_LOG_COMMENT_PREFIX "Parsing file: %s\n", filename.c_str());
+		printf(PBO_LOG_COMMENT_PREFIX "Parsing file: %s\n", filename.c_str());
 		assert(filename.substr(filename.find_last_of('.') + 1) == "opb" ||
 			filename.substr(filename.find_last_of('.') + 1) == "pb");
-		parser = new SimpleParser< AbcCallback >(filename.c_str());
+		parser = new SimpleParser< PboCallback >(filename.c_str());
 
 		parser->setAutoLinearize(true);
 		parser->parse();
 
-		start_feasibility_jump_heuristic(parser->cb,
+		startFeasibilityJumpHeuristic(parser->cb,
 			maxTotalSolutions,
-			heuristicOnly,
 			NUM_THREADS,
-			relaxContinuous,
-			exponentialDecay,
-            timeout,
+			timeout,
 			verbose);
 	}
 	catch (exception& e)

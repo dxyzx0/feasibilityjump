@@ -2,7 +2,7 @@
 // Created by psw on 6/3/24.
 //
 
-#include "feasibilityjump.h"
+#include "fj_solver.h"
 
 #ifdef useGMP
 string to_string(const IntegerType& x)
@@ -13,25 +13,25 @@ string to_string(const IntegerType& x)
 
 void printFullSolution(const Solution& s)
 {
-    string str;
-    for (size_t i = 0; i < s.assignment.size(); i++)
-    {
-        if (s.assignment[i] == 1)
-            str += "x" + to_string(i + 1) + " ";
-        else
-            str += "-x" + to_string(i + 1) + " ";
-    }
-    printf(PBO_LOG_SOL_PREFIX "%s\n", str.c_str());
+	string str;
+	for (size_t i = 0; i < s.assignment.size(); i++)
+	{
+		if (s.assignment[i] == 1)
+			str += "x" + to_string(i + 1) + " ";
+		else
+			str += "-x" + to_string(i + 1) + " ";
+	}
+	printf(PBO_LOG_SOL_PREFIX "%s\n", str.c_str());
 }
 
 void printSolution(const Solution& s)
 {
-    string str = "solution: ";
+	string str = "solution: ";
 	for (const IntegerType& v : s.assignment)
 	{
 		str += to_string(v) + " ";
-    }
-    printf(PBO_LOG_COMMENT_PREFIX FJ_LOG_SOL_PREFIX "%s\n", str.c_str());
+	}
+	printf(PBO_LOG_COMMENT_PREFIX FJ_LOG_SOL_PREFIX "%s\n", str.c_str());
 }
 
 void printIdxOfOneInSolution(const Solution& s, size_t thread_rank)
@@ -52,8 +52,8 @@ void printSolution(IntegerType* s, size_t n)
 	for (size_t i = 0; i < n; i++)
 	{
 		str += to_string(s[i]) + " ";
-    }
-    printf(PBO_LOG_COMMENT_PREFIX FJ_LOG_SOL_PREFIX "%s\n", str.c_str());
+	}
+	printf(PBO_LOG_COMMENT_PREFIX FJ_LOG_SOL_PREFIX "%s\n", str.c_str());
 }
 
 void printIdxOfOneInSolution(const IntegerType* s, size_t n, size_t thread_rank)
@@ -64,17 +64,17 @@ void printIdxOfOneInSolution(const IntegerType* s, size_t n, size_t thread_rank)
 		if (s[i] == 1)
 			str += to_string(i) + " ";
 	}
-    printf(PBO_LOG_COMMENT_PREFIX FJ_LOG_SOL_PREFIX "%zu: solution: %s\n", thread_rank, str.c_str());
+	printf(PBO_LOG_COMMENT_PREFIX FJ_LOG_SOL_PREFIX "%zu: solution: %s\n", thread_rank, str.c_str());
 }
 
 void printVector(const std::vector< IntegerType >& v)
 {
-    string str = "vector: ";
+	string str = "vector: ";
 	for (const IntegerType& x : v)
 	{
 		str += to_string(x) + " ";
-    }
-    printf(PBO_LOG_COMMENT_PREFIX FJ_LOG_PREFIX "%s\n", str.c_str());
+	}
+	printf(PBO_LOG_COMMENT_PREFIX FJ_LOG_PREFIX "%s\n", str.c_str());
 }
 
 void printIdxOfOneInVector(const std::vector< IntegerType >& v)
@@ -82,10 +82,10 @@ void printIdxOfOneInVector(const std::vector< IntegerType >& v)
 	string str = "vector: ";
 	for (size_t i = 0; i < v.size(); i++)
 	{
-        if (v[i] == 1)
-            str += to_string(i) + " ";
-    }
-    printf(PBO_LOG_COMMENT_PREFIX FJ_LOG_PREFIX "%s\n", str.c_str());
+		if (v[i] == 1)
+			str += to_string(i) + " ";
+	}
+	printf(PBO_LOG_COMMENT_PREFIX FJ_LOG_PREFIX "%s\n", str.c_str());
 }
 
 // Measures if two Ints are equal within a tolerance of 1.0e-5.
@@ -106,9 +106,10 @@ void modifyMove(LhsModification mod, Problem& problem, Move& move)
 	move.score += newScoreTerm - oldScoreTerm;
 }
 
-bool check_feasibility(const IntegerType* solution, const Problem& problem){
+bool checkSol(const IntegerType* solution, const Problem& problem)
+{
 	// Check if the solution is feasible.
-	for (const Constraint & c : problem.constraints)
+	for (const Constraint& c : problem.constraints)
 	{
 		IntegerType lhs = 0;
 		for (const IdxCoeff& cell : c.coeffs)

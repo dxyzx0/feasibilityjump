@@ -7,7 +7,7 @@
 
 #include <vector>
 #include <string>
-#include "../type_int.h"
+#include "../fj_type_int.h"
 
 using std::vector;
 

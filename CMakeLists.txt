@@ -5,10 +5,10 @@ set(CMAKE_CXX_STANDARD 23)
 set(CMAKE_C_STANDARD 99)
 
 set(FJ_SOURCES
-        src/pbo_fj.cpp
-        src/feasibilityjump.cpp
+        src/fj_pbo.cpp
+        src/fj_solver.cpp
         src/parser/DefaultCallback.cpp
-        src/parser/AbcCallback.cpp
+        src/parser/PboCallback.cpp
 )
 
 # Create the C++ library
@@ -20,18 +20,16 @@ add_library(
 # Create the C++ executable
 add_executable(
         pbofj_cpp
-        main.cpp
+        src/main.cpp
 )
-# Link the C++ library to the C executable
 target_link_libraries(pbofj_cpp pbofj)
 
 
 # Create the C executable
 add_executable(
         pbofj_c
-        main.c
+        src/main.c
 )
-# Link the C++ library to the C executable
 target_link_libraries(pbofj_c pbofj)
 
 

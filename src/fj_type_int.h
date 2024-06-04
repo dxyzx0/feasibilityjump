@@ -12,9 +12,9 @@
 typedef mpz_class IntegerType;
 
 const IntegerType PBOINTMAX = []{
-    IntegerType result;
-    mpz_ui_pow_ui(result.get_mpz_t(), 2, 1000);
-    return result;
+	IntegerType result;
+	mpz_ui_pow_ui(result.get_mpz_t(), 2, 1000);
+	return result;
 }();
 
 const IntegerType PBOINTMIN = -PBOINTMAX;
@@ -24,7 +24,7 @@ const IntegerType PBOINTMIN = -PBOINTMAX;
 typedef long IntegerType;
 
 const IntegerType PBOINTMAX = (1L << 62);
-const IntegerType PBOINTMIN = (-1L << 62);
+const IntegerType PBOINTMIN = -PBOINTMAX;
 
 #endif
 
