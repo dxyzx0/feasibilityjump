@@ -14,6 +14,7 @@
 #include "SimpleParser.h"
 #include "DefaultCallback.h"
 #include "PboCallback.h"
+#include <algorithm>
 using namespace std;
 
 /**
