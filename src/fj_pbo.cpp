@@ -413,12 +413,12 @@ int printUsage()
 	return 1;
 }
 
-int runFeasibilityJumpHeuristic(int argc, char* argv[])
+int runFeasibilityJumpHeuristic(int argc, const char* argv[])
 {
 	startTime = std::chrono::steady_clock::now();
 
 	int verbose = 0;
-	int timeout = INT32_MAX / 2;
+	double timeout = 1e20;
 	size_t maxTotalSolutions = 5;
 	size_t NUM_THREADS = 1;
 
@@ -437,7 +437,7 @@ int runFeasibilityJumpHeuristic(int argc, char* argv[])
 		else if (argvi == "--timeout" || argvi == "-t")
 		{
 			if (i + 1 < argc)
-				timeout = std::stoi(argv[i + 1]);
+				timeout = std::stod(argv[i + 1]);
 			else
 				return printUsage();
 			i++;

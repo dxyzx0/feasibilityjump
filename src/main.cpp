@@ -3,7 +3,7 @@
 //
 #include "fj_pbo.h"
 
-int main(int argc, char* argv[])
+int main(int argc, const char* argv[])
 {
 	return runFeasibilityJumpHeuristic(argc, argv);
 }

@@ -9,7 +9,7 @@
 extern "C" {
 #endif
 
-int runFeasibilityJumpHeuristic(int argc, char* argv[]);
+int runFeasibilityJumpHeuristic(int argc, const char* argv[]);
 
 #ifdef __cplusplus
 }
