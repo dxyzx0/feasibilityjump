@@ -2,8 +2,8 @@
 // Created by psw on 6/3/24.
 //
 
-#ifndef FEASIBILITYJUMP_HEAURISTIC__PBO_FJ_H_
-#define FEASIBILITYJUMP_HEAURISTIC__PBO_FJ_H_
+#ifndef FEASIBILITYJUMP_HEURISTIC_FJ_PBO_H_
+#define FEASIBILITYJUMP_HEURISTIC_FJ_PBO_H_
 
 #ifdef __cplusplus
 extern "C" {
@@ -15,4 +15,4 @@ int runFeasibilityJumpHeuristic(int argc, char* argv[]);
 }
 #endif
 
-#endif //FEASIBILITYJUMP_HEAURISTIC__PBO_FJ_H_
+#endif //FEASIBILITYJUMP_HEURISTIC_FJ_PBO_H_

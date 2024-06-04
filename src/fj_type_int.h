@@ -2,8 +2,8 @@
 // Created by psw on 5/19/24.
 //
 
-#ifndef PBO_HEURISTICS__TYPE_INT_H_
-#define PBO_HEURISTICS__TYPE_INT_H_
+#ifndef FEASIBILITYJUMP_HEURISTIC_TYPE_INT_H_
+#define FEASIBILITYJUMP_HEURISTIC_TYPE_INT_H_
 
 // define IntegerType
 #ifdef useGMP
@@ -28,4 +28,4 @@ const IntegerType PBOINTMIN = -PBOINTMAX;
 
 #endif
 
-#endif //PBO_HEURISTICS__TYPE_INT_H_
+#endif //FEASIBILITYJUMP_HEURISTIC_TYPE_INT_H_

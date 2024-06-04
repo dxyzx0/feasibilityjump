@@ -2,8 +2,8 @@
 // Created by psw on 5/19/24.
 //
 
-#ifndef PBO_HEURISTICS_PARSER_SIMPLEPARSER_H_
-#define PBO_HEURISTICS_PARSER_SIMPLEPARSER_H_
+#ifndef FEASIBILITYJUMP_HEURISTIC_SIMPLEPARSER_H_
+#define FEASIBILITYJUMP_HEURISTIC_SIMPLEPARSER_H_
 
 #include <iostream>
 #include <fstream>
@@ -630,4 +630,4 @@ class SimpleParser
 	}
 }; // class SimpleParser
 
-#endif //PBO_HEURISTICS_PARSER_SIMPLEPARSER_H_
+#endif //FEASIBILITYJUMP_HEURISTIC_SIMPLEPARSER_H_

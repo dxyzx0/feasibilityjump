@@ -2,8 +2,8 @@
 // Created by psw on 5/19/24.
 //
 
-#ifndef PBO_HEURISTICS_PARSER_DEFAULTCALLBACK_H_
-#define PBO_HEURISTICS_PARSER_DEFAULTCALLBACK_H_
+#ifndef FEASIBILITYJUMP_HEURISTIC_DEFAULTCALLBACK_H_
+#define FEASIBILITYJUMP_HEURISTIC_DEFAULTCALLBACK_H_
 
 #include <vector>
 #include <string>
@@ -28,4 +28,4 @@ class DefaultCallback
 	virtual void linearizeProduct(int newSymbol, std::vector< int > product);
 };
 
-#endif //PBO_HEURISTICS_PARSER_DEFAULTCALLBACK_H_
+#endif //FEASIBILITYJUMP_HEURISTIC_DEFAULTCALLBACK_H_

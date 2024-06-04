@@ -1,5 +1,5 @@
-#ifndef FEASIBILITYJUMP_HEAURISTIC__FEASIBILITYJUMP_H_
-#define FEASIBILITYJUMP_HEAURISTIC__FEASIBILITYJUMP_H_
+#ifndef FEASIBILITYJUMP_HEURISTIC_FJ_SOLVER_H_
+#define FEASIBILITYJUMP_HEURISTIC_FJ_SOLVER_H_
 
 #include <algorithm>
 #include <functional>
@@ -126,7 +126,7 @@ struct Constraint
 // A potential new value for a variable, including its score.
 struct Move
 {
-	IntegerType value;  // FIXME: potential bug?
+	IntegerType value;
 	IntegerType score;
 
 	static Move undef()
@@ -162,7 +162,7 @@ struct Problem
 	bool usedRelaxContinuous = false;
 
 	size_t nNonzeros = 0;
-	IntegerType incumbentObjective = 0;  // FIXME
+	IntegerType incumbentObjective = 0;
 
 	size_t addVar(VarType vartype, IntegerType lb, IntegerType ub, IntegerType objCoeff)
 	{
@@ -187,15 +187,13 @@ struct Problem
 
 		if (coeffs.empty())
 		{
-			bool ok;
-			if (sense == RowType::Lte)
-				ok = 0 <= rhs + equalityTolerance;
-			else if (sense == RowType::Gte)
-				ok = 0 + equalityTolerance >= rhs;
-			else
-				ok = eq(0, rhs);
-
-			return 1;  // FIXME: constraint can't be satisfied
+			if ((sense == RowType::Lte) && (0 > rhs + equalityTolerance))
+				throw std::runtime_error("Constraint cannot be satisfied.");
+			if ((sense == RowType::Gte) && (0 + equalityTolerance < rhs))
+				throw std::runtime_error("Constraint cannot be satisfied.");
+			if ((sense == RowType::Equal) && (!eq(0, rhs)))
+				throw std::runtime_error("Constraint cannot be satisfied.");
+			return 0;  // empty constraint
 		}
 
 		size_t newConstraintIdx = constraints.size();
@@ -217,7 +215,7 @@ struct Problem
 		return newConstraintIdx;
 	}
 
-	void resetIncumbent(IntegerType* initialValues)
+	void resetIncumbent(const IntegerType* initialValues)
 	{
 		// Set the initial values, if given.
 
@@ -301,7 +299,7 @@ struct Problem
 			{
 				if (varCoeff.idx != varIdx)
 				{
-					LhsModification m;
+					LhsModification m{};
 					m.varIdx = varCoeff.idx;
 					m.constraintIdx = cstrCoeff.idx;
 					m.coeff = varCoeff.coeff;
@@ -840,4 +838,4 @@ class FeasibilityJumpSolver
 	}
 };
 
-#endif //FEASIBILITYJUMP_HEAURISTIC__FEASIBILITYJUMP_H_
+#endif //FEASIBILITYJUMP_HEURISTIC_FJ_SOLVER_H_

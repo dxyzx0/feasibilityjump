@@ -2,8 +2,8 @@
 // Created by psw on 5/19/24.
 //
 
-#ifndef PBO_HEURISTICS__ABCCALLBACK_H_
-#define PBO_HEURISTICS__ABCCALLBACK_H_
+#ifndef FEASIBILITYJUMP_HEURISTIC_PBOCALLBACK_H_
+#define FEASIBILITYJUMP_HEURISTIC_PBOCALLBACK_H_
 
 #include <vector>
 #include <memory>
@@ -62,4 +62,4 @@ class PboCallback : public DefaultCallback
 
 };
 
-#endif //PBO_HEURISTICS__ABCCALLBACK_H_
+#endif //FEASIBILITYJUMP_HEURISTIC_PBOCALLBACK_H_
