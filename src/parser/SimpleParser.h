@@ -11,6 +11,7 @@
 #include <stdexcept>
 #include <vector>
 #include <cassert>
+#include <algorithm>
 #include "SimpleParser.h"
 #include "DefaultCallback.h"
 #include "PboCallback.h"
@@ -32,7 +33,7 @@ class ProductStore
 		// literals found from the root up to this node
 		vector< ProductNode >* next; // list of next literals in a product
 
-		ProductNode(int l)
+		explicit ProductNode(int l)
 		{
 			lit = l;
 			productId = 0;
@@ -81,7 +82,7 @@ class ProductStore
 		sort(list.begin(), list.end());
 
 		// is this a known product ?
-		for (int i = 0; i < list.size(); ++i)
+		for (size_t i = 0; i < list.size(); ++i)
 		{
 			assert(p != NULL);
 
@@ -130,7 +131,7 @@ class ProductStore
 	void defineProductVariableRec(Callback& cb,
 		vector< ProductNode >& nodes, vector< int >& list)
 	{
-		for (int i = 0; i < nodes.size(); ++i)
+		for (size_t i = 0; i < nodes.size(); ++i)
 		{
 			list.push_back(nodes[i].lit);
 			if (nodes[i].productId)
@@ -174,8 +175,8 @@ class SimpleParser
 	int nbVars, nbConstr; // MetaData: #Variables and #Constraints in file.
 
 	int nbProduct, sizeProduct; // MetaData for non linear format
-	int nEqual; // MetaData for number of equal constraints
-	int intSize;
+	int nEqual = 0; // MetaData for number of equal constraints
+	int intSize = 0;
 	ProductStore< Callback > store;
 	bool autoLinearize; // should the parser linearize constraints ?
 
@@ -406,8 +407,6 @@ class SimpleParser
 	 */
 	void readTerm(IntegerType& coeff, vector< int >& list)
 	{
-		char c;
-
 		list.clear();
 
 		in >> coeff;

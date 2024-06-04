@@ -83,7 +83,7 @@ struct IdxCoeff
 	size_t idx;
 	IntegerType coeff;
 
-	IdxCoeff(size_t idx, IntegerType coeff) : idx(idx), coeff(coeff)
+	IdxCoeff(size_t _idx, IntegerType _coeff) : idx(_idx), coeff(_coeff)
 	{
 	}
 };

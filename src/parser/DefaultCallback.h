@@ -26,6 +26,7 @@ class DefaultCallback
 	virtual void constraintRelOp(std::string relop);
 	virtual void constraintRightTerm(IntegerType val);
 	virtual void linearizeProduct(int newSymbol, std::vector< int > product);
+	virtual ~DefaultCallback() = default;
 };
 
 #endif //FEASIBILITYJUMP_HEURISTIC_DEFAULTCALLBACK_H_

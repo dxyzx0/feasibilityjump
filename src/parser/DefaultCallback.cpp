@@ -156,14 +156,14 @@ void DefaultCallback::linearizeProduct(int newSymbol, vector< int > product)
 	r = 1;
 	beginConstraint();
 	constraintTerm(1, newSymbol);
-	for (int i = 0; i < product.size(); ++i)
-		if (product[i] > 0)
+	for (int i : product)
+		if (i > 0)
 		{
-			constraintTerm(-1, product[i]);
+			constraintTerm(-1, i);
 			r -= 1;
 		}
 		else
-			constraintTerm(1, -product[i]);
+			constraintTerm(1, -i);
 	constraintRelOp(">=");
 	constraintRightTerm(r);
 	endConstraint();
@@ -193,12 +193,12 @@ void DefaultCallback::linearizeProduct(int newSymbol, vector< int > product)
 	r = 0;
 	beginConstraint();
 	constraintTerm(-(int)product.size(), newSymbol);
-	for (int i = 0; i < product.size(); ++i)
-		if (product[i] > 0)
-			constraintTerm(1, product[i]);
+	for (int i : product)
+		if (i > 0)
+			constraintTerm(1, i);
 		else
 		{
-			constraintTerm(-1, -product[i]);
+			constraintTerm(-1, -i);
 			r -= 1;
 		}
 	constraintRelOp(">=");

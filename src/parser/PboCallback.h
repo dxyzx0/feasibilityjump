@@ -59,7 +59,7 @@ class PboCallback : public DefaultCallback
 	{
 		return iConsIneq;
 	}
-
+	~PboCallback() override = default;
 };
 
 #endif //FEASIBILITYJUMP_HEURISTIC_PBOCALLBACK_H_
