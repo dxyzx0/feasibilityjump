@@ -357,7 +357,7 @@ namespace FJ_BIGINT
 						if (status.solution != nullptr)
 						{
 							string solutionObjectiveValueStr = to_string(status.solutionObjectiveValue);
-							printf(PBO_LOG_COMMENT_PREFIX FJ_LOG_SOL_PREFIX "%zu: time=%g obj=%s\n",
+							printf(PBO_LOG_COMMENT_PREFIX FJ_LOG_SOL_PREFIX "%zu: time= %g obj= %s\n",
 								thread_rank,
 								time,
 								solutionObjectiveValueStr.c_str());
@@ -421,7 +421,7 @@ int runFeasibilityJumpHeuristic(int argc, const char* argv[])
 {
 	std::string inputFilename;
 	std::string outDir;
-	size_t maxTotalSolutions = 5;
+	size_t maxTotalSolutions = 100;
 	size_t NUM_THREADS = 1;
 	std::chrono::steady_clock::time_point startTime = std::chrono::steady_clock::now();
 	double timeout = 1e20;
