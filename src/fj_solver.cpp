@@ -124,6 +124,18 @@ namespace FJ_BIGINT
 			if (c.sense == RowType::Lte)
 				throw std::runtime_error("Unsupported constraint type.");
 		}
+		//print lhs, RowType and rhs array for checking if the solution is feasible
+//		for (const Constraint& c : problem.constraints)
+//		{
+//			IntegerType lhs = 0;
+//			for (const IdxCoeff& cell : c.coeffs)
+//				lhs += cell.coeff * solution[cell.idx];
+//			printf(PBO_LOG_COMMENT_PREFIX "lhs: %s, RowType: %d, rhs: %s\n",
+//				to_string(lhs).c_str(),
+//				c.sense,
+//				to_string(c.rhs).c_str());
+//		}
+
 		return true;
 	}
 
