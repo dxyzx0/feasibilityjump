@@ -19,8 +19,6 @@
 
 #include "feasibilityjump.hh"
 
-const int NUM_THREADS = 2;
-
 std::atomic_size_t totalNumSolutionsFound(0);
 std::atomic_size_t totalNumSolutionsAdded(0);
 std::atomic_bool presolveFinished(false);
@@ -81,7 +79,7 @@ ProblemInstance getCOPTProblemData(Model problem)
 	data.lb = std::vector< double >(data.numCols);
 	data.ub = std::vector< double >(data.numCols);
 	data.objCoeffs = std::vector< double >(data.numCols);
-	for (int colIdx = 0; colIdx < data.numCols; colIdx += 1)
+	for (int colIdx = 0; colIdx < data.numCols; colIdx++)
 	{
 		Var v = problem.GetVar(colIdx);
 		data.varTypes[colIdx] = v.GetType();
@@ -94,7 +92,7 @@ ProblemInstance getCOPTProblemData(Model problem)
 	data.rowtypes = std::vector< char >(data.numRows);
 	data.rhs = std::vector< double >(data.numRows);
 	data.rhsrange = std::vector< double >(data.numRows);
-	for (int rowIdx = 0; rowIdx < data.numRows; rowIdx += 1)
+	for (int rowIdx = 0; rowIdx < data.numRows; rowIdx++)
 	{
 		Constraint c = problem.GetConstr(rowIdx);
 		double lb = c.Get(COPT_DBLINFO_LB);
@@ -139,7 +137,7 @@ ProblemInstance getCOPTProblemData(Model problem)
 		Expr r = problem.GetRow(c);
 		size_t rowStart = data.rowStart[rowIdx];
 		data.rowStart[rowIdx + 1] = rowStart + r.Size();
-		for (int i = 0; i < r.Size(); i += 1)
+		for (int i = 0; i < r.Size(); i++)
 		{
 			data.colIdxs[rowStart + i] = r.GetVar(i).GetIdx();
 			data.colCoeffs[rowStart + i] = r.GetCoeff(i);
@@ -152,7 +150,7 @@ ProblemInstance getCOPTProblemData(Model problem)
 bool copyDataToHeuristicSolver(FeasibilityJumpSolver& solver, ProblemInstance& data, int relaxContinuous)
 {
 	printf("initializing FJ with %d vars %d constraints\n", data.numCols, data.numRows);
-	for (int colIdx = 0; colIdx < data.numCols; colIdx += 1)
+	for (int colIdx = 0; colIdx < data.numCols; colIdx++)
 	{
 		VarType vartype = VarType::Continuous;
 		if (data.varTypes[colIdx] == 'C')
@@ -177,7 +175,7 @@ bool copyDataToHeuristicSolver(FeasibilityJumpSolver& solver, ProblemInstance& d
 		solver.addVar(vartype, data.lb[colIdx], data.ub[colIdx], data.objCoeffs[colIdx]);
 	}
 
-	for (int rowIdx = 0; rowIdx < data.numRows; rowIdx += 1)
+	for (int rowIdx = 0; rowIdx < data.numRows; rowIdx++)
 	{
 		RowType rowtype;
 		if (data.rowtypes[rowIdx] == 'N')
@@ -269,7 +267,7 @@ void mapHeuristicSolution(FJStatus& status, bool usePresolved)
 		{
 			std::lock_guard< std::mutex > guard(heuristicSolutions_mutex);
 			heuristicSolutions.push_back(s);
-			totalNumSolutionsFound += 1;
+			totalNumSolutionsFound++;
 		}
 
 
@@ -277,14 +275,14 @@ void mapHeuristicSolution(FJStatus& status, bool usePresolved)
 	}
 }
 
-const size_t maxEffort = 1 << 31;
+const size_t maxEffort = (1 << 31);
 
 // Starts background threads running the Feasibility Jump heuristic.
 // Also installs the check-time callback to report any feasible solutions
 // back to the MIP solver.
 void start_feasibility_jump_heuristic(Model problem,
 	size_t maxTotalSolutions,
-	bool heuristicOnly,
+	int NUM_THREADS,
 	bool relaxContinuous = false,
 	bool exponentialDecay = false,
 	int verbose = 0)
@@ -294,7 +292,7 @@ void start_feasibility_jump_heuristic(Model problem,
 		auto allThreadsTerminated = std::make_shared< Defer >([]()
 		{ heuristicFinished = true; });
 
-		for (int thread_idx = 0; thread_idx < NUM_THREADS; thread_idx += 1)
+		for (int thread_idx = 0; thread_idx < NUM_THREADS; thread_idx++)
 		{
 			auto seed = thread_idx;
 			bool usePresolved = thread_idx % 2 == 1;
@@ -378,9 +376,10 @@ int main(int argc, char* argv[])
 	bool exponentialDecay = false;
 	int timeout = INT32_MAX / 2;
 	size_t maxTotalSolutions = 10;
+	int NUM_THREADS = 8;
 
 	std::string inputPath;
-	for (int i = 1; i < argc; i += 1)
+	for (int i = 1; i < argc; i++)
 	{
 		std::string argvi(argv[i]);
 		if (argvi == "--save-solutions" || argvi == "-s")
@@ -389,7 +388,7 @@ int main(int argc, char* argv[])
 				outDir = std::string(argv[i + 1]);
 			else
 				return printUsage();
-			i += 1;
+			i++;
 		}
 		else if (argvi == "--timeout" || argvi == "-t")
 		{
@@ -397,16 +396,24 @@ int main(int argc, char* argv[])
 				timeout = std::stoi(argv[i + 1]);
 			else
 				return printUsage();
-			i += 1;
+			i++;
 		}
 		else if (argvi == "--verbose" || argvi == "-v")
-			verbose += 1;
+			verbose++;
 		else if (argvi == "--heuristic-only" || argvi == "-h")
 			heuristicOnly = true;
 		else if (argvi == "--relax-continuous" || argvi == "-r")
 			relaxContinuous = true;
 		else if (argvi == "--exponential-decay" || argvi == "-e")
 			exponentialDecay = true;
+		else if (argvi == "--jobs" || argvi == "-j")
+		{
+			if (i + 1 < argc)
+				NUM_THREADS = std::stoi(argv[i + 1]);
+			else
+				return printUsage();
+			i++;
+		}
 		else if (!inputPath.empty())
 			return printUsage();
 		else
@@ -427,7 +434,12 @@ int main(int argc, char* argv[])
 	problem.Read(inputPath.c_str());
 //	problem.Solve();
 
-	start_feasibility_jump_heuristic(problem, maxTotalSolutions, heuristicOnly, relaxContinuous, exponentialDecay, verbose);
+	start_feasibility_jump_heuristic(problem,
+		maxTotalSolutions,
+		NUM_THREADS,
+		relaxContinuous,
+		exponentialDecay,
+		verbose);
 
 	return returnCode;
 }
