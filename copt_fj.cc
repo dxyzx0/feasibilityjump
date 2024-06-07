@@ -114,11 +114,10 @@ ProblemInstance getCOPTProblemData(Model problem)
 		}
 		else
 		{
-			throw std::runtime_error("Range constraints not supported.");
 			assert(lb < ub);
 			data.rowtypes[rowIdx] = 'R';
-			data.rhs[rowIdx] = lb;
-			data.rhsrange[rowIdx] = ub - lb;  // FIXME?
+			data.rhs[rowIdx] = ub;
+			data.rhsrange[rowIdx] = ub - lb;  // according to copyDataToHeuristicSolver
 		}
 	}
 
