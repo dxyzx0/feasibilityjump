@@ -6,6 +6,7 @@
 #include <tuple>
 #include <string>
 #include <thread>
+#include <unistd.h>
 
 #include "parser/PboCallback.h"
 #include "parser/SimpleParser.h"
@@ -508,4 +509,21 @@ int runFeasibilityJumpHeuristic(int argc, const char* argv[])
 		printf(PBO_LOG_STATUS_PREFIX PBO_STATUS_UNKNOWN "\n");
 		return -1;
 	}
+}
+
+void runFeasbilityJumpBigInt(double timelimit, const char* filename)
+{
+	/* set the number of threads to maximum */
+	long num_threads = sysconf(_SC_NPROCESSORS_ONLN);
+	char str_threads[30];
+	sprintf(str_threads, "%ld", num_threads);
+	printf("c num_threads: %s\n", str_threads);
+
+	char str_timelimit[30];
+	sprintf(str_timelimit, "%f", timelimit > 0.0 ? timelimit : 1e20);
+	printf("c timelimit: %s\n", str_timelimit);
+
+	const int argc = 7;
+	const char* argv[argc] = { "fj_pbo", "-v", "-j", str_threads, "-t", str_timelimit, filename };
+	runFeasibilityJumpHeuristic(argc, argv);
 }

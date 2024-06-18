@@ -9,7 +9,8 @@
 extern "C" {
 #endif
 
-int runFeasibilityJumpHeuristic(int argc, const char* argv[]);
+/* FJ BIGINT HEURISTIC */
+void runFeasbilityJumpBigInt(double timelimit, const char* filename);
 
 #ifdef __cplusplus
 }
