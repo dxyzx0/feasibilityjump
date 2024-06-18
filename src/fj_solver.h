@@ -24,6 +24,12 @@ namespace FJ_BIGINT
 #define PBO_LOG_OBJ_PREFIX "o "
 #define PBO_LOG_SOL_PREFIX "v "
 
+#define PBO_STATUS_SAT "SATISFIABLE"
+#define PBO_STATUS_UNSAT "UNSATISFIABLE"
+#define PBO_STATUS_OPT "OPTIMUM FOUND"
+#define PBO_STATUS_UNKNOWN "UNKNOWN"  // in solver
+#define PBO_STATUS_UNSUPPORTED "UNSUPPORTED"  // in parser
+
 	const IntegerType violationTolerance = 0;
 	const IntegerType equalityTolerance = 0;
 

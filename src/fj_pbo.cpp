@@ -291,11 +291,11 @@ namespace FJ_BIGINT
 		}
 		if (bestObj == PBOINTMAX)
 		{
-			printf(PBO_LOG_STATUS_PREFIX "UNKNOWN\n");
+			printf(PBO_LOG_STATUS_PREFIX PBO_STATUS_UNKNOWN "\n");
 		}
 		else
 		{
-			printf(PBO_LOG_STATUS_PREFIX "SATISFIABLE\n");
+			printf(PBO_LOG_STATUS_PREFIX PBO_STATUS_SAT "\n");
 			printf(PBO_LOG_OBJ_PREFIX "%s\n", to_string(bestObj).c_str());
 			printFullSolution(heuristicSolutions[bestIdx]);
 		}
@@ -426,53 +426,51 @@ int runFeasibilityJumpHeuristic(int argc, const char* argv[])
 	std::chrono::steady_clock::time_point startTime = std::chrono::steady_clock::now();
 	double timeout = 1e20;
 	int verbose = 0;
-
-	std::string inputPath;
-	for (int i = 1; i < argc; i++)
-	{
-		std::string argvi(argv[i]);
-		if (argvi == "--save-solutions" || argvi == "-s")
-		{
-			if (i + 1 < argc)
-				outDir = std::string(argv[i + 1]);
-			else
-				return printUsage();
-			i++;
-		}
-		else if (argvi == "--timeout" || argvi == "-t")
-		{
-			if (i + 1 < argc)
-				timeout = std::stod(argv[i + 1]);
-			else
-				return printUsage();
-			i++;
-		}
-		else if (argvi == "--verbose" || argvi == "-v")
-			verbose++;
-		else if (argvi == "--jobs" || argvi == "-j")
-		{
-			if (i + 1 < argc)
-				NUM_THREADS = std::stoi(argv[i + 1]);
-			else
-				return printUsage();
-			i++;
-		}
-		else if (!inputPath.empty())
-			return printUsage();
-		else
-			inputPath = argvi;
-	}
-
-	if (inputPath.empty())
-		return printUsage();
-
-	inputFilename = inputPath.substr(inputPath.find_last_of("/\\") + 1);
-
-	int returnCode = 0;
-
 	SimpleParser< PboCallback >* parser;
+
 	try
 	{
+		std::string inputPath;
+		for (int i = 1; i < argc; i++)
+		{
+			std::string argvi(argv[i]);
+			if (argvi == "--save-solutions" || argvi == "-s")
+			{
+				if (i + 1 < argc)
+					outDir = std::string(argv[i + 1]);
+				else
+					return printUsage();
+				i++;
+			}
+			else if (argvi == "--timeout" || argvi == "-t")
+			{
+				if (i + 1 < argc)
+					timeout = std::stod(argv[i + 1]);
+				else
+					return printUsage();
+				i++;
+			}
+			else if (argvi == "--verbose" || argvi == "-v")
+				verbose++;
+			else if (argvi == "--jobs" || argvi == "-j")
+			{
+				if (i + 1 < argc)
+					NUM_THREADS = std::stoi(argv[i + 1]);
+				else
+					return printUsage();
+				i++;
+			}
+			else if (!inputPath.empty())
+				return printUsage();
+			else
+				inputPath = argvi;
+		}
+
+		if (inputPath.empty())
+			return printUsage();
+
+		inputFilename = inputPath.substr(inputPath.find_last_of("/\\") + 1);
+
 		const string& filename = inputPath;
 		// assert filename ends with ".opb" or ".pb"
 		printf(PBO_LOG_COMMENT_PREFIX "Parsing file: %s\n", filename.c_str());
@@ -482,6 +480,18 @@ int runFeasibilityJumpHeuristic(int argc, const char* argv[])
 
 		parser->setAutoLinearize(true);
 		parser->parse();
+	}
+	catch (exception& e)
+	{
+		printf(PBO_LOG_COMMENT_PREFIX "Exception: %s\n", e.what());
+		printf(PBO_LOG_STATUS_PREFIX PBO_STATUS_UNSUPPORTED "\n");
+		return -1;
+	}
+
+	// start the Feasibility Jump heuristic
+	try
+	{
+		int returnCode = 0;
 
 		FJ_BIGINT::startFeasibilityJumpHeuristic(parser->cb,
 			maxTotalSolutions,
@@ -489,12 +499,13 @@ int runFeasibilityJumpHeuristic(int argc, const char* argv[])
 			startTime,
 			timeout,
 			verbose);
+
+		return returnCode;
 	}
 	catch (exception& e)
 	{
-		cerr << "ERROR: " << e.what() << endl;
+		printf(PBO_LOG_COMMENT_PREFIX "Exception: %s\n", e.what());
+		printf(PBO_LOG_STATUS_PREFIX PBO_STATUS_UNKNOWN "\n");
 		return -1;
 	}
-
-	return returnCode;
 }

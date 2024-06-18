@@ -380,6 +380,15 @@ class SimpleParser
 		}
 		else
 			cb.metaData(nbVars, nbConstr);
+
+		// final check on the instance
+		if (nbProduct > 0)
+			throw runtime_error("nonlinear format not supported");
+
+		// check if the intSize is less than 63
+		if (intSize >= 64) {
+			throw runtime_error("intsize should be less than 64");
+		}
 	}
 
 	/**
